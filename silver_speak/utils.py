@@ -51,14 +51,15 @@ def loglikelihood(input_ids: torch.Tensor):
 import random
 random.seed(0)
 from typing import List, Tuple, Dict
-def replace_one_character(chars_map: Dict[str, List[str]], loglikelihoods_list: List[Tuple[int, float]]) -> torch.Tensor:
+def replace_characters(chars_map: Dict[str, List[str]], loglikelihoods_list: List[Tuple[int, float]], num_to_replace = 1) -> torch.Tensor:
     """
     Takes the word with the highest loglikelihood and tries to replace one of its characters with an equivalent from the chars_map. 
     """
     # Repeat until we find a character to replace or we run out of words. Start by the word with the highest loglikelihood.
+    words_to_replace = []
     for word_id, loglikelihood in sorted(loglikelihoods_list[1:], key=lambda x: x[1], reverse=True): # Skip the first word, which is the first token, because it always has loglikelihood 0
         word = tokenizer.decode(word_id)
-        print(f'word: {word}, loglikelihood: {loglikelihood}')
+        #print(f'word: {word}, loglikelihood: {loglikelihood}')
         # See if there is a character in the word that we can replace
         for i, char in enumerate(word):
             if char in chars_map.keys():
@@ -66,15 +67,31 @@ def replace_one_character(chars_map: Dict[str, List[str]], loglikelihoods_list: 
                 random_chosen_char = random.choice(chars_map[char])
                 new_word = word[:i] + random_chosen_char + word[i+1:]
                 encoded_new_word_tokens = encode_text(new_word).tolist()
-                print(f'new_word: {new_word}, encoded_new_word_tokens: {encoded_new_word_tokens}')
-                
-                # Generate a new list of tokens
-                index_of_word = loglikelihoods_list.index((word_id, loglikelihood))
-                new_tokens_list = [w for w, l in loglikelihoods_list[:index_of_word]] + encoded_new_word_tokens + [w for w, l in loglikelihoods_list[index_of_word+1:]]
-                return torch.tensor(new_tokens_list)
-
+                words_to_replace.append((word_id, loglikelihood, new_word, encoded_new_word_tokens))
+                #print(f'new_word: {new_word}, encoded_new_word_tokens: {encoded_new_word_tokens}')
+                num_to_replace -= 1
+                if num_to_replace == 0:
+                    break
+        if num_to_replace == 0:
+            break
     else:
         # We didn't find a character to replace, so raise an error
         raise ValueError("Couldn't find a character to replace.")
+    
+    new_tokens_list = []
+    # Generate a new list of tokens
+    for word, loglikelihood in loglikelihoods_list:
+        # Check if there is a word to replace
+        for word_2, loglikelihood_2, new_word, encoded_new_word_tokens in words_to_replace:
+            if word == word_2 and loglikelihood == loglikelihood_2:
+                # Append the new word tokens
+                new_tokens_list += encoded_new_word_tokens
+                break
+        ## Remove the word from the list of words to replace
+        #words_to_replace.remove((word_2, loglikelihood_2, new_word, encoded_new_word_tokens))
+        else:
+            # Append the original word tokens
+            new_tokens_list.append(word)
+    return torch.tensor(new_tokens_list)
 
 # %%

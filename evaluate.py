@@ -53,7 +53,7 @@ assert len(dataset) == args.num_examples
 # Map the dataset to a prediction for each example
 
 from typing import Any, Dict, List
-from silver_speak import rewrite_attack
+from silver_speak import rewrite_attack, replace_characters_by_equivalents, decrease_loglikelihood_replace_characters_by_equivalents
 
 def get_rewrite_fn(attack):
     if attack == 'none':
@@ -78,21 +78,23 @@ def get_rewrite_fn(attack):
             return batch
         return rewrite_batch
     else:
-        if attack == 'chars':
-            do_replace_chars = True
+        if attack.startswith('chars'):
+            replace_chars_fn = replace_characters_by_equivalents
+        elif attack.startswith('it_spaces'):
+            replace_chars_fn = decrease_loglikelihood_replace_characters_by_equivalents
+        else:
+            replace_chars_fn = None
+        if attack.endswith('spaces'):
+            do_replace_spaces = True
+        else:
             do_replace_spaces = False
-        elif attack == 'spaces':
-            do_replace_chars = False
-            do_replace_spaces = True
-        elif attack == 'chars+spaces':
-            do_replace_chars = True
-            do_replace_spaces = True
+
         def rewrite_batch(batch: Dict[str, List[Any]]):
             """
             Rewrite the batch using the rewriting attack
             """
             batch['original_text'] = batch['text']
-            batch['text'] = [rewrite_attack(text, do_replace_chars=do_replace_chars, do_replace_spaces=do_replace_spaces) for text in batch['text']]
+            batch['text'] = [rewrite_attack(text, replace_chars_fn=replace_chars_fn, do_replace_spaces=do_replace_spaces) for text in batch['text']]
             return batch
         return rewrite_batch
 

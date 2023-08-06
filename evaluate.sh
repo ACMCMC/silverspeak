@@ -3,7 +3,7 @@
 #SBATCH --ntasks=1                   # -n Run a single task   
 #SBATCH --cpus-per-task=32
 #SBATCH --mem=64gb                    # Job memory request
-#SBATCH --time=15:45:00              # Time limit hrs:min:sec
+#SBATCH --time=05:45:00              # Time limit hrs:min:sec
 #SBATCH --output=run_%j.log       # Standard output and error log
 #SBATCH --mail-type=ALL
 #SBATCH --mail-user=aldan.creo@rai.usc.es
