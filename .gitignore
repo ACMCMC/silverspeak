@@ -3,3 +3,4 @@ run_*.txt
 __pycache__/
 .vscode/
 silver_speak.egg-info/
+build/

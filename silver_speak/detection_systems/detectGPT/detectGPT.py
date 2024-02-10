@@ -14,7 +14,7 @@ import datetime
 import os
 import json
 import functools
-import custom_datasets
+from .custom_datasets import SEPARATOR, DATASETS, load as custom_datasets_load
 from multiprocessing.pool import ThreadPool
 import time
 
@@ -197,7 +197,7 @@ def drop_last_word(text):
 def sample_from_model(texts, min_words=55, prompt_tokens=30):
     # encode each text as a list of token ids
     if args.dataset == 'pubmed':
-        texts = [t[:t.index(custom_datasets.SEPARATOR)] for t in texts]
+        texts = [t[:t.index(SEPARATOR)] for t in texts]
         all_encoded = base_tokenizer(texts, return_tensors="pt", padding=True).to(DEVICE)
     else:
         all_encoded = base_tokenizer(texts, return_tensors="pt", padding=True).to(DEVICE)
@@ -574,7 +574,7 @@ def generate_samples(raw_data, batch_size):
         for o, s in zip(original_text, sampled_text):
             if args.dataset == 'pubmed':
                 s = truncate_to_substring(s, 'Question:', 2)
-                o = o.replace(custom_datasets.SEPARATOR, ' ')
+                o = o.replace(SEPARATOR, ' ')
 
             o, s = trim_to_shorter_length(o, s)
 
@@ -593,8 +593,8 @@ def generate_samples(raw_data, batch_size):
 
 def generate_data(dataset, key):
     # load data
-    if dataset in custom_datasets.DATASETS:
-        data = custom_datasets.load(dataset, cache_dir)
+    if dataset in DATASETS:
+        data = custom_datasets_load(dataset, cache_dir)
     else:
         data = datasets.load_dataset(dataset, split='train', cache_dir=cache_dir)[key]
 
