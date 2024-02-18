@@ -5,6 +5,8 @@ Utility functions for SilverSpeak.
 
 from transformers import AutoTokenizer, AutoModelForCausalLM
 import torch
+import math
+from typing import List, Tuple, Literal
 
 # Load GPT-2 tokenizer and model
 tokenizer = AutoTokenizer.from_pretrained("gpt2")
@@ -27,7 +29,7 @@ def decode_tokens(tokens):
 from torch.nn import CrossEntropyLoss
 loss_fct = CrossEntropyLoss(reduction='none')
 
-def loglikelihood(input_ids: torch.Tensor):
+def tokens_loglikelihoods(input_ids: torch.Tensor) -> List[Tuple[str, float]]:
     """Calculate the loglikelihood of each word in a text using GPT-2."""
     # Generate predictions
     with torch.no_grad():
@@ -46,6 +48,13 @@ def loglikelihood(input_ids: torch.Tensor):
         loglikelihoods.append((word.item(), -loss[i].item()))
 
     return loglikelihoods
+
+def total_loglikelihood(tokens_loglikelihoods: List[Tuple[str, float]]) -> float:
+    """
+    This function takes a list of the loglikelihoods of a certain set of tokens and gets its conditioned probability, i.e.:
+    log(P(t_0)) + log(P(t_1|t_0)) + log(P(t_2|t_1)) + ... + log(P(t_n|t_n-1))
+    """
+    return sum(loglikelihood for word, loglikelihood in tokens_loglikelihoods)
 
 # %%
 import random

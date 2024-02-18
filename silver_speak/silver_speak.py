@@ -1,5 +1,12 @@
 # %%
 import random
+from .utils import total_loglikelihood, tokens_loglikelihoods, encode_text, decode_tokens
+from typing import List, Tuple, Dict
+import math
+import logging
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger(__name__)
 
 SPACES_MAP = [
     "\u2000",
@@ -11,9 +18,11 @@ SPACES_MAP = [
     "\u205f\u2006\u2006",
 ]
 from silver_speak.identical_map import chars_map
-#SPACES_MAP = [
+
+# SPACES_MAP = [
 #    "\u2007\u2062",
-#]
+# ]
+
 
 def replace_spaces(text):
     # Replaces all spaces in text with a random space from the SPACES_MAP
@@ -33,22 +42,38 @@ def convert_to_char_from_hex(hex_num):
     hex_num = chr(hex_num)
     return hex_num
 
-from silver_speak.utils import encode_text, loglikelihood, replace_characters, decode_tokens
-def decrease_loglikelihood_replace_characters_by_equivalents(chars_map, text, patience=10):
+
+from silver_speak.utils import (
+    encode_text,
+    tokens_loglikelihoods,
+    replace_characters,
+    decode_tokens,
+)
+
+
+def decrease_loglikelihood_replace_characters_by_equivalents(
+    chars_map, text, patience=10
+):
     encoded_text = encode_text(text)
-    loglikelihoods = loglikelihood(encoded_text)
-    print(f'Mean starting loglikelihood: {sum([x[1] for x in loglikelihoods]) / len(loglikelihoods)}')
+    loglikelihoods = tokens_loglikelihoods(encoded_text)
+    print(
+        f"Mean starting loglikelihood: {sum([x[1] for x in loglikelihoods]) / len(loglikelihoods)}"
+    )
     current_loglikelihood = sum([x[1] for x in loglikelihoods]) / len(loglikelihoods)
     global_best_loglikelihood = current_loglikelihood
     global_best_text = encoded_text.tolist()
     current_used_patience = 0
     try:
         while patience > current_used_patience:
-            new_tokens_list = replace_characters(chars_map, loglikelihoods, num_to_replace=1)
-            loglikelihoods = loglikelihood(new_tokens_list)
-            current_loglikelihood = sum([x[1] for x in loglikelihoods]) / len(loglikelihoods)
-            print(f'Mean loglikelihood: {current_loglikelihood}')
-            print(f'New text: {decode_tokens(new_tokens_list)}')
+            new_tokens_list = replace_characters(
+                chars_map, loglikelihoods, num_to_replace=1
+            )
+            loglikelihoods = tokens_loglikelihoods(new_tokens_list)
+            current_loglikelihood = sum([x[1] for x in loglikelihoods]) / len(
+                loglikelihoods
+            )
+            print(f"Mean loglikelihood: {current_loglikelihood}")
+            print(f"New text: {decode_tokens(new_tokens_list)}")
             if current_loglikelihood < global_best_loglikelihood:
                 global_best_loglikelihood = current_loglikelihood
                 global_best_text = new_tokens_list.tolist()
@@ -56,24 +81,25 @@ def decrease_loglikelihood_replace_characters_by_equivalents(chars_map, text, pa
             else:
                 current_used_patience += 1
     except ValueError:
-        print('No more characters to replace.')
-    
+        print("No more characters to replace.")
+
     # Reconstruct the text
     text = decode_tokens(global_best_text)
     return text
 
+
 def replace_characters_by_equivalents(final_map, text):
     """This is an attack where we replace only the negative sentiment words found in negative-words list."""
-    
+
     # Replace all chars in text with a random char from the final_map
-    rewritten_text = ''
+    rewritten_text = ""
     rewrite = True
     for word in text.split(" "):
         if random.random() < 0.0:
             if random.random() < 0.4 and not rewrite:
-                rewrite = not rewrite # flip the rewrite flag
+                rewrite = not rewrite  # flip the rewrite flag
             else:
-                rewrite = not rewrite # flip the rewrite flag
+                rewrite = not rewrite  # flip the rewrite flag
         if not rewrite:
             rewritten_text += word + " "
             continue
@@ -87,28 +113,132 @@ def replace_characters_by_equivalents(final_map, text):
 
     return rewritten_text
 
-def rewrite_attack(text, replace_chars_fn=replace_characters_by_equivalents, do_replace_spaces=True):
-    rewritten_text = text
-    if replace_chars_fn is not None:
-        rewritten_text = replace_characters_by_equivalents(chars_map, rewritten_text)
-    if do_replace_spaces:
-        rewritten_text = replace_spaces(rewritten_text)
-    return rewritten_text
 
-if __name__ == "__main__":
-    # legitimate_text = input("Give the legitimate/original text to be perturbed in 1 line:\n")
-    original_text = """The following is a transcript from The Guardian's interview with the British ambassador to the UN, John Baird. Baird: The situation in Syria is very dire. We have a number of reports of chemical weapons being used in the country. The Syrian opposition has expressed their willingness to use chemical weapons. We have a number of people who have been killed, many of them civilians. I think it is important to understand this. There are many who are saying that the chemical weapons used in Syria are not only used to destroy people but also to destroy the Syrian people. The Syrian people have been suffering for many years. The regime is responsible for that suffering. They have been using chemical weapons. They have killed many people, and they continue to kill many more. I think that the international community has to take a position that the Assad regime has a responsibility for that suffering. It must take a stand that we are not going to allow the Syrian government to use chemical weapons on civilians, that we are not going to allow them, and that we do not condone their use. We have a lot of people who believe that the regime is responsible for this suffering, and that they are responsible for this suffering, and that they are responsible for the use of chemical weapons. I think that we need to be clear about that. We must be clear that the use of chemical weapons by any country, including Russia and Iran, is a violation of international law. We are not going to tolerate that. We do not tolerate that. And we have the responsibility to ensure that the world doesn't allow the Assad regime to use chemical weapons against civilians. Baird: It seems that there are a range of people that are saying that we are not allowed to use chemical weapons in Syria. There are many who say we are not allowed to use chemical weapons in Syria. I think there are a lot of people that are saying that we are not allowed to use chemical weapons in Syria. I think that we have to take a stand that we are not going to allow the Assad regime to use chemical weapons on civilians, that we are not going to tolerate that. We have to take a stand that we are not going to allow Russia and Iran to use chemical weapons on civilians. Baird: I think it is important for us to understand that the use of chemical weapons in Syria is an extremely dangerous situation. I think there has been very little information from the UN that the regime has used any chemical weapons. We have not seen any evidence that they are using them. We have to understand that the use of chemical weapons is very dangerous."""
-    original_text = """What are the standards required of offered properties? Properties need to be habitable and must meet certain health and safety standards, which the local authority can discuss with you. These standards have been agreed by the Department of Housing, Local Government and Heritage. The local authority will assess your property to make sure it meets the standards. If the property does not meet the standards, the local authority will explain why and can discuss what could be done to bring the property up to standard. Some properties may not be suitable for all those in need of accommodation, due to location or other reasons. However, every effort will be made by the local authority to ensure that offered properties are matched to appropriate beneficiaries."""
-    #original_text = """The following is a transcript from The Guardian's interview."""
+class TreeNode:
+    parent = None
+    changed_index: int
+    changed_letter: str
+    loglikelihood: float = None
 
-    rewritten_text = rewrite_attack(original_text, do_replace_chars=True, do_replace_spaces=False)
-    print("\n========================\n")
-    print(rewritten_text)
-    print("\n========================\n")
+    def get_text(self) -> str:
+        # Go to the parent and add the change of this node
+        if self.parent:
+            original_text = self.parent.get_text()
+            changed_text = original_text[: self.changed_index] + self.changed_letter + original_text[self.changed_index + 1 :]
+            return changed_text
+        else:
+            # We are the root
+            raise NotImplementedError("This is not a root node, but does not have a parent")
 
-    ## Tokenize the text using GPT2Tokenizer and print its decoded form
-    #from transformers import AutoTokenizer
-    #tok = AutoTokenizer.from_pretrained('t5-base')
-    #print(tok.decode(tok.encode(rewritten_text)))
+    def get_loglikelihood(self) -> float:
+        if self.loglikelihood:
+            return self.loglikelihood
+        loglikelihoods = tokens_loglikelihoods(encode_text(self.get_text()))
+        self.loglikelihood = total_loglikelihood(loglikelihoods)
+        return self.loglikelihood
 
-# %%
+    def dump_to_file(self, filename: str = 'current_node.txt'):
+        with open(filename, 'w') as f:
+            f.write('Dump of the tree node\n')
+            ascendants = []
+            current_node = self
+            while current_node:
+                ascendants.append(current_node)
+                current_node = current_node.parent
+            for i, node in enumerate(reversed(ascendants)):
+                f.write(f"Level {i}: {node}\n")
+                f.write(f"Text: {node.get_text()}\n")
+                f.write(f"Loglikelihood: {node.get_loglikelihood()}\n")
+                f.write("\n")
+    
+    def __repr__(self) -> str:
+        return f"TreeNode(change=[{self.changed_index}] -> {self.changed_letter})"
+    
+class RootTreeNode(TreeNode):
+    text: str
+
+    def get_text(self) -> str:
+        return self.text
+    
+    def __repr__(self) -> str:
+        return f"RootTreeNode()"
+
+
+def generate_child_nodes(node: TreeNode):
+    """
+    Given a certain text, this function generates all possible modifications of the given text at that point.
+    """
+    children = []
+    replaceable_letters = set(chars_map.keys())
+    exploded_text = list(node.get_text())
+    logger.info("Generating children")
+    for i, letter in enumerate(exploded_text):
+        if letter in replaceable_letters:
+            for new_letter in chars_map[letter]:
+                new_child = TreeNode()
+                new_child.parent = node
+                new_child.changed_index = i
+                new_child.changed_letter = new_letter
+                children.append(new_child)
+                logger.debug(f"New child: {new_child}")
+    logger.info(f"Generated {len(children)} children")
+    return children
+
+
+# Ideas to improve performance:
+# Bounds: estimate the possible likelihood change depending on the position of the change
+# Bounds: estimate the possible likelihood change depending on the previous improvements already computed
+# Do Bayesian optimization to estimate the best changes to make - this means exploring the space of possibilities (i.e. the positions in the text) in a more intelligent way
+
+
+def rewrite_attack(
+    text, replace_chars_fn=replace_characters_by_equivalents, do_replace_spaces=True
+):
+    """
+    Branch and bound algorithm.
+
+    The goal of this function is to explore the space of possibilities to reach the optimal solution. There is a tree of possibilities, where each node is one instance of the text with a certain set of modifications applied.
+
+    The optimal solution is such that loglikelihood is minimal.
+
+    The space of possibilities at a given node in the tree of possibilities is given by all 1-letter replacements possible at that version of the text.
+    """
+    THRESHOLD = 0.5
+
+    current_node = RootTreeNode()
+    current_node.text = text
+
+    # Branch and bound algorithm
+    best_node = current_node
+    best_loglikelihood = best_node.get_loglikelihood()
+    current_nodes = [current_node]
+    improvement = 1e100 # Improvement is the ratio of the current loglikelihood to the best loglikelihood
+    best_improvement = 0
+    while current_nodes and improvement > (THRESHOLD * best_improvement):
+        # Stop if we haven't improved in a while - this is that the improvement is less than 50% of the best improvement
+        # Sort the nodes by loglikelihood
+        logger.info("Sorting nodes")
+        current_nodes.sort(key=lambda x: x.get_loglikelihood())
+        # Remove all nodes after the 50th
+        current_nodes = current_nodes[:50]
+        current_node = current_nodes.pop(0)
+        logger.info(f"Current loglikelihood: {current_node.get_loglikelihood()}")
+        if current_node.get_loglikelihood() < best_loglikelihood:
+            improvement = current_node.get_loglikelihood() / best_loglikelihood
+            if improvement > best_improvement:
+                best_improvement = improvement
+            best_node = current_node
+            best_loglikelihood = best_node.get_loglikelihood()
+            logger.info(f"New best loglikelihood: {best_loglikelihood}, improvement: {improvement}, best improvement: {best_improvement}")
+            logger.info(f"Best node: {best_node}")
+            best_node.dump_to_file()
+        children = generate_child_nodes(current_node)
+        current_nodes += children
+
+    # Log the best node's tree
+    logger.info("Best node's tree:")
+    current_node = best_node
+    while current_node:
+        logger.info(current_node)
+        current_node = current_node.parent
+    return best_node.get_text()
