@@ -53,7 +53,7 @@ assert len(dataset) == args.num_examples
 # Map the dataset to a prediction for each example
 
 from typing import Any, Dict, List
-from silver_speak import rewrite_attack, replace_characters_by_equivalents, decrease_loglikelihood_replace_characters_by_equivalents
+from silver_speak import star_rewrite_attack, replace_characters_by_equivalents, decrease_loglikelihood_replace_characters_by_equivalents
 
 def get_rewrite_fn(attack):
     if attack == 'none':
@@ -94,7 +94,7 @@ def get_rewrite_fn(attack):
             Rewrite the batch using the rewriting attack
             """
             batch['original_text'] = batch['text']
-            batch['text'] = [rewrite_attack(text, replace_chars_fn=replace_chars_fn, do_replace_spaces=do_replace_spaces) for text in batch['text']]
+            batch['text'] = [star_rewrite_attack(text, replace_chars_fn=replace_chars_fn, do_replace_spaces=do_replace_spaces) for text in batch['text']]
             return batch
         return rewrite_batch
 

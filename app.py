@@ -4,7 +4,7 @@ Also show tho checkboxes for replace_chars and replace_spaces.
 """
 import gradio as gr
 
-from silver_speak import rewrite_attack, EXAMPLE_TEXT
+from silver_speak import star_rewrite_attack, EXAMPLE_TEXT
 
 inputs = [
     gr.inputs.Textbox(lines=10, label="Input text"),
@@ -16,7 +16,7 @@ title = "Silver Speak"
 description = "A tool to rewrite text to avoid AI detection systems."
 
 gr.Interface(
-    fn=rewrite_attack,
+    fn=star_rewrite_attack,
     inputs=inputs,
     outputs=outputs,
     title=title,

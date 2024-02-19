@@ -1,12 +1,12 @@
-import random    
-from .silver_speak import rewrite_attack
 import logging
+import random
+
+from .silver_speak import star_rewrite_attack
 
 logger = logging.getLogger(__name__)
 
 random.seed(42)
 # legitimate_text = input("Give the legitimate/original text to be perturbed in 1 line:\n")
-original_text = """What are the standards required of offered properties? Properties need to be habitable and must meet certain health and safety standards, which the local authority can discuss with you. These standards have been agreed by the Department of Housing, Local Government and Heritage. The local authority will assess your property to make sure it meets the standards. If the property does not meet the standards, the local authority will explain why and can discuss what could be done to bring the property up to standard. Some properties may not be suitable for all those in need of accommodation, due to location or other reasons. However, every effort will be made by the local authority to ensure that offered properties are matched to appropriate beneficiaries."""
 original_text = """The following is a transcript from The Guardian's interview with the British ambassador to the UN, John Baird.
 
 Baird: The situation in Syria is very dire. We have a number of reports of chemical weapons being used in the country. The Syrian opposition has expressed their willingness to use chemical weapons. We have a number of people who have been killed, many of them civilians. I think it is important to understand this.
@@ -27,9 +27,9 @@ Baird: I think it is important for us to understand that the use of chemical wea
 
 We have to understand that the use of chemical weapons is very dangerous."""
 
-rewritten_text = rewrite_attack(
-    original_text
-)
+original_text = """What are the standards required of offered properties? Properties need to be habitable and must meet certain health and safety standards, which the local authority can discuss with you. These standards have been agreed by the Department of Housing, Local Government and Heritage. The local authority will assess your property to make sure it meets the standards. If the property does not meet the standards, the local authority will explain why and can discuss what could be done to bring the property up to standard. Some properties may not be suitable for all those in need of accommodation, due to location or other reasons. However, every effort will be made by the local authority to ensure that offered properties are matched to appropriate beneficiaries."""
+
+rewritten_text = star_rewrite_attack(original_text)
 logger.info("\n========================\n")
 logger.info(rewritten_text)
 logger.info("\n========================\n")
