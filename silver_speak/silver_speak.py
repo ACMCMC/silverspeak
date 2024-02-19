@@ -1,6 +1,6 @@
 # %%
 import random
-from .utils import total_loglikelihood, tokens_loglikelihoods, encode_text, decode_tokens
+from .utils import total_loglikelihood, get_loglikelihoods_of_tokens, encode_text, decode_tokens
 from typing import List, Tuple, Dict
 import math
 import logging
@@ -45,7 +45,7 @@ def convert_to_char_from_hex(hex_num):
 
 from silver_speak.utils import (
     encode_text,
-    tokens_loglikelihoods,
+    get_loglikelihoods_of_tokens,
     replace_characters,
     decode_tokens,
 )
@@ -55,7 +55,7 @@ def decrease_loglikelihood_replace_characters_by_equivalents(
     chars_map, text, patience=10
 ):
     encoded_text = encode_text(text)
-    loglikelihoods = tokens_loglikelihoods(encoded_text)
+    loglikelihoods = get_loglikelihoods_of_tokens(encoded_text)
     print(
         f"Mean starting loglikelihood: {sum([x[1] for x in loglikelihoods]) / len(loglikelihoods)}"
     )
@@ -68,7 +68,7 @@ def decrease_loglikelihood_replace_characters_by_equivalents(
             new_tokens_list = replace_characters(
                 chars_map, loglikelihoods, num_to_replace=1
             )
-            loglikelihoods = tokens_loglikelihoods(new_tokens_list)
+            loglikelihoods = get_loglikelihoods_of_tokens(new_tokens_list)
             current_loglikelihood = sum([x[1] for x in loglikelihoods]) / len(
                 loglikelihoods
             )
@@ -133,7 +133,7 @@ class TreeNode:
     def get_loglikelihood(self) -> float:
         if self.loglikelihood:
             return self.loglikelihood
-        loglikelihoods = tokens_loglikelihoods(encode_text(self.get_text()))
+        loglikelihoods = get_loglikelihoods_of_tokens(encode_text(self.get_text()))
         self.loglikelihood = total_loglikelihood(loglikelihoods)
         return self.loglikelihood
 

@@ -7,6 +7,12 @@ from transformers import AutoTokenizer, AutoModelForCausalLM
 import torch
 import math
 from typing import List, Tuple, Literal
+from torch import Tensor
+
+import logging
+
+logging.basicConfig(level=logging.DEBUG)
+logger = logging.getLogger(__name__)
 
 # Load GPT-2 tokenizer and model
 tokenizer = AutoTokenizer.from_pretrained("gpt2")
@@ -29,8 +35,12 @@ def decode_tokens(tokens):
 from torch.nn import CrossEntropyLoss
 loss_fct = CrossEntropyLoss(reduction='none')
 
-def tokens_loglikelihoods(input_ids: torch.Tensor) -> List[Tuple[str, float]]:
-    """Calculate the loglikelihood of each word in a text using GPT-2."""
+def get_loglikelihoods_of_tokens(input_ids: torch.Tensor) -> List[Tuple[int, float]]:
+    """
+    Calculate the loglikelihood of each word in a text using GPT-2.
+
+    Returns a list of tuples (index_id, loglikelihood).
+    """
     # Generate predictions
     with torch.no_grad():
         outputs = model(input_ids)
@@ -49,14 +59,13 @@ def tokens_loglikelihoods(input_ids: torch.Tensor) -> List[Tuple[str, float]]:
 
     return loglikelihoods
 
-def total_loglikelihood(tokens_loglikelihoods: List[Tuple[str, float]]) -> float:
+def total_loglikelihood(tokens_loglikelihoods: List[Tuple[int, float]]) -> float:
     """
     This function takes a list of the loglikelihoods of a certain set of tokens and gets its conditioned probability, i.e.:
     log(P(t_0)) + log(P(t_1|t_0)) + log(P(t_2|t_1)) + ... + log(P(t_n|t_n-1))
     """
     return sum(loglikelihood for word, loglikelihood in tokens_loglikelihoods)
 
-# %%
 import random
 random.seed(0)
 from typing import List, Tuple, Dict
@@ -102,5 +111,99 @@ def replace_characters(chars_map: Dict[str, List[str]], loglikelihoods_list: Lis
             # Append the original word tokens
             new_tokens_list.append(word)
     return torch.tensor(new_tokens_list)
+
+
+def align_two_token_sequences(reference: Tensor, target: Tensor, FILL_TOKEN = -1) -> Tensor:
+    """
+    Aligns two token sequences.
+    
+    We have two token sequences that are *very similar*, but not exactly the same. For example:
+    reference = [1, 3, 4, 5, 6, 7, 8]
+    target =    [1, 2, 4, 5, 9, 8]
+
+    We want to align them, so that we get:
+    reference = [1, 3, 4, 5, 6, 7, 8]
+    target =    [1, 2, 4, 5, 9, F, 8]
+
+    Where F is a special token that we use to fill the gap between the two sequences.
+
+    We want to NOT change the different tokens, but we want to add the (FILL) token until we find the same element in both sequences. This way, the sequences will have the same length and we can compare them.
+    """
+    # We can do this by using the Needleman-Wunsch algorithm
+    # However, it is important that when there is a discrepancy, the different tokens are kept at the start of the discrepancy, and if there is a need to add the FILL token, it is added at the end of the discrepancy.
+
+    INDEL_SCORE = -1
+    MATCH_SCORE = 0
+    MISMATCH_SCORE = -1
+
+    # Create the matrix
+    n = len(reference)
+    m = len(target)
+    matrix = torch.zeros(n+1, m+1, dtype=torch.long)
+    # Initialize the first row and column
+    for i in range(n+1):
+        matrix[i][0] = -i
+    for j in range(m+1):
+        matrix[0][j] = -j
+    # Fill the matrix
+    for i in range(1, n+1):
+        for j in range(1, m+1):
+            # Calculate the score
+            indel_score = matrix[i-1][j] + INDEL_SCORE
+            indel_score_2 = matrix[i][j-1] + INDEL_SCORE
+            match_score = matrix[i-1][j-1] + (MATCH_SCORE if reference[i-1] == target[j-1] else MISMATCH_SCORE)
+            # Choose the maximum score
+            matrix[i][j] = max(indel_score, indel_score_2, match_score)
+
+    # Traceback
+    aligned = []
+    i = n
+    j = m
+    while i > 0 and j > 0:
+        if reference[i-1] == target[j-1]:
+            aligned.append(reference[i-1])
+            i -= 1
+            j -= 1
+        elif matrix[i-1][j] > matrix[i][j-1]:
+            logger.debug(f"matrix[i-1][j] > matrix[i][j-1]: {matrix[i-1][j]} > {matrix[i][j-1]}")
+            logger.debug(f"Adding FILL")
+            aligned.append(FILL_TOKEN)
+            i -= 1
+        else:
+            logger.debug(f"matrix[i-1][j] <= matrix[i][j-1]: {matrix[i-1][j]} <= {matrix[i][j-1]}")
+            logger.debug(f"Adding the target token: {target[j-1]}")
+            aligned.append(target[j-1])
+            i -= 1
+            j -= 1
+    
+    # Add the remaining elements
+    while i > 0:
+        aligned.append(FILL_TOKEN)
+        i -= 1
+    while j > 0:
+        aligned.append(FILL_TOKEN)
+        j -= 1
+
+    # Reverse the list
+    aligned.reverse()
+
+    assert len(aligned) == max(n, m)
+    return torch.tensor(aligned)
+
+def add_fill_tokens(reference: Tensor, target: Tensor, FILL_TOKEN = -1) -> Tensor:
+    """
+    Takes every element in the reference; if it is not FILL_TOKEN, it adds the corresponding element in the target. If it is FILL_TOKEN, it adds FILL_TOKEN and then moves to the next element in the reference.
+
+    The final sequence will have the same length as the reference.
+    """
+    aligned = []
+    j = 0
+    for i in range(len(reference)):
+        if reference[i] != FILL_TOKEN:
+            aligned.append(target[j])
+            j += 1
+        else:
+            aligned.append(FILL_TOKEN)
+    return torch.tensor(aligned)
 
 # %%
