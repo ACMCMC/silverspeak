@@ -1,7 +1,7 @@
 import logging
 import random
 
-from .silver_speak import star_rewrite_attack
+from .iterative_attack import star_rewrite_attack
 
 logger = logging.getLogger(__name__)
 

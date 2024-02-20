@@ -9,13 +9,14 @@ from typing import List, Literal, Tuple
 
 import torch
 from torch import Tensor
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import AutoModelForCausalLM, AutoTokenizer, GPT2Tokenizer
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+# %%
 # Load GPT-2 tokenizer and model
-tokenizer = AutoTokenizer.from_pretrained("gpt2")
+tokenizer = AutoTokenizer.from_pretrained("gpt2", use_fast=False)
 model = AutoModelForCausalLM.from_pretrained("gpt2")
 if torch.cuda.is_available():
     model.cuda()
@@ -33,6 +34,23 @@ def encode_text(text):
 def decode_tokens(tokens):
     """Decode tokens using GPT-2 tokenizer."""
     return tokenizer.decode(tokens)
+
+
+def convert_ids_to_tokens(tokens, **kwargs) -> List[str]:
+    """Get the tokens from the token ids."""
+    return tokenizer.convert_ids_to_tokens(tokens, **kwargs)
+
+
+def convert_tokens_to_ids(tokens, **kwargs) -> List[int]:
+    """Get the token ids from the tokens."""
+    return tokenizer.convert_tokens_to_ids(tokens, **kwargs)
+
+
+def convert_tokens_to_string(tokens: List[str]) -> str:
+    """Remove special bytes from the text."""
+    # Extracted from transformers/models/gpt2/tokenization_gpt2.py
+    # text = bytearray([self.byte_decoder[c] for c in text]).decode("utf-8", errors=self.errors)
+    return tokenizer.convert_tokens_to_string(tokens)
 
 
 from torch.nn import CrossEntropyLoss

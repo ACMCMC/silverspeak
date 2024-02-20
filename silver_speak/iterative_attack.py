@@ -4,7 +4,7 @@ import math
 import random
 from typing import Dict, List, Tuple
 
-from .utils import (decode_tokens, encode_text, get_loglikelihoods_of_tokens,
+from silver_speak.utils import (decode_tokens, encode_text, get_loglikelihoods_of_tokens,
                     total_loglikelihood)
 
 logging.basicConfig(level=logging.INFO)

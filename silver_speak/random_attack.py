@@ -1,3 +1,4 @@
+# %%
 from silver_speak.identical_map import chars_map
 import random
 
@@ -16,3 +17,4 @@ def random_attack(text: str, probability=0.5, random_seed=42) -> str:
         )
         for char in text
     )
+# %%

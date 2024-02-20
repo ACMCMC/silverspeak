@@ -5,7 +5,6 @@ from silver_speak.utils import (
 )
 import logging
 from silver_speak.identical_map import chars_map
-from silver_speak.silver_speak import replace_characters_by_equivalents
 
 logger = logging.getLogger(__name__)
 
@@ -95,7 +94,7 @@ def generate_child_nodes(node: TreeNode):
 
 
 def star_rewrite_attack(
-    text, replace_chars_fn=replace_characters_by_equivalents, do_replace_spaces=True
+    text
 ):
     """
     SilverSpeak* attach - best attack, but slowest.
