@@ -27,7 +27,7 @@ plt.show()
 # %%
 from silver_speak.optimized_attack import optimized_attack
 # Change one of the characters and plot the loglikelihoods again
-changed_text = optimized_attack(test_text, percentage_to_replace=0.1, random_seed=42)
+changed_text = optimized_attack(test_text, percentage_to_replace=0.05, random_seed=42)
 print(changed_text)
 
 changed_input_ids = encode_text(changed_text)
