@@ -16,8 +16,10 @@ logger = logging.getLogger(__name__)
 
 # %%
 # Load GPT-2 tokenizer and model
-tokenizer = AutoTokenizer.from_pretrained("gpt2", use_fast=False)
-model = AutoModelForCausalLM.from_pretrained("gpt2")
+MODEL = "gpt2"
+MODEL = "bigscience/bloom-560m"
+tokenizer = AutoTokenizer.from_pretrained(MODEL, use_fast=False)
+model = AutoModelForCausalLM.from_pretrained(MODEL)
 if torch.cuda.is_available():
     model.cuda()
 
@@ -66,7 +68,7 @@ def get_loglikelihoods_of_tokens(input_ids: torch.Tensor) -> List[Tuple[int, flo
     """
     # Generate predictions
     with torch.no_grad():
-        outputs = model(input_ids)
+        outputs = model(input_ids.unsqueeze(0))
 
     # Shift so that tokens < n predict n
     # For example, if we have 'This is a text', and we run it through the model, it will predict 'is a text [other token]' from 'This is a text'. We want to compare 'is a text' with 'is a text' to get the loglikelihood, so we remove the first token from the input and the last token from the output.

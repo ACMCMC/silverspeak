@@ -25,7 +25,7 @@ def optimized_attack(text: str, percentage_to_replace=0.2, random_seed=42) -> st
     tokens_strs = convert_ids_to_tokens(encoded_text, skip_special_tokens=True)
 
     positions_of_tokens_strs_and_loglikelihoods = list(
-        enumerate(zip(tokens_strs, map(lambda x: x[1], loglikelihoods), [len(t) for t in tokens_strs]))
+        enumerate(zip(tokens_strs, map(lambda x: x[1], loglikelihoods)))
     )
 
     # Sort the tokens by loglikelihood
@@ -36,7 +36,7 @@ def optimized_attack(text: str, percentage_to_replace=0.2, random_seed=42) -> st
     replaceable_positions = [
         x
         for x in sorted_positions_of_tokens_strs_and_loglikelihoods
-        if any(char in chars_map for char in x[1][0]) for x in sorted_positions_of_tokens_strs_and_loglikelihoods
+        if any(char in chars_map.keys() for char in x[1][0])
     ]
 
     # Replace the top percentage_to_replace tokens
@@ -48,11 +48,11 @@ def optimized_attack(text: str, percentage_to_replace=0.2, random_seed=42) -> st
     changes_to_make = []
     changed_text = text
     for i in range(num_to_replace):
-        position, (token_str, loglikelihood, len_token) = replaceable_positions[i]
-        start_of_token = sum(
-            [x[1][2] for x in positions_of_tokens_strs_and_loglikelihoods[:position]]
+        position, (token_str, loglikelihood) = replaceable_positions[i]
+        start_of_token = len(
+            convert_tokens_to_string([x[1][0] for x in positions_of_tokens_strs_and_loglikelihoods[:position]])
         )
-        logger.info(f"Replacing token {token_str} at position {start_of_token}")
+        logger.debug(f"Replacing token {token_str} at position {start_of_token}")
         # Replace the token
         for char_index, char in enumerate(token_str):
             if char in chars_map:
@@ -69,9 +69,14 @@ def optimized_attack(text: str, percentage_to_replace=0.2, random_seed=42) -> st
                 # It's enough to change one character in the token
                 break
 
-    # Reconstruct the text - woouldn't work because we have used non-ascii characters
+    # Reconstruct the text - wouldn't work because we have used non-ascii characters
     # and that makes the decoder fail
     # text = convert_tokens_to_string(tokens_strs)
 
     return changed_text
 # %%
+if __name__ == "__main__":
+    # Test the attack
+    test_text = """Dr. Capy Cosmos, a capybara unlike any other, astounded the scientific community with his groundbreaking research in astrophysics. With his keen sense of observation and unparalleled ability to interpret cosmic data, he uncovered new insights into the mysteries of black holes and the origins of the universe. As he peered through telescopes with his large, round eyes, fellow researchers often remarked that it seemed as if the stars themselves whispered their secrets directly to him. Dr. Cosmos not only became a beacon of inspiration to aspiring scientists but also proved that intellect and innovation can be found in the most unexpected of creatures."""
+    changed_text = optimized_attack(test_text, percentage_to_replace=0.25, random_seed=42)
+    print(changed_text)
