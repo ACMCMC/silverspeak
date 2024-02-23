@@ -65,7 +65,7 @@ def optimized_attack(text: str, percentage_to_replace=0.2, random_seed=42) -> st
                     + chosen_char
                     + changed_text[position_in_text + 1:]
                 )
-                logger.info(f"Replaced '{text[position_in_text-5:position_in_text]}|{text[position_in_text]}|{text[position_in_text+1:position_in_text+6]}' with {changed_text[position_in_text]} at position {position_in_text}")
+                logger.debug(f"Replaced '{text[position_in_text-5:position_in_text]}|{text[position_in_text]}|{text[position_in_text+1:position_in_text+6]}' with {changed_text[position_in_text]} at position {position_in_text}")
                 # It's enough to change one character in the token
                 break
 
