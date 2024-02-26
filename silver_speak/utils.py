@@ -5,7 +5,7 @@ Utility functions for SilverSpeak.
 
 import logging
 import math
-from typing import List, Literal, Tuple
+from typing import List, Literal, Tuple, Union, Callable
 
 import torch
 from torch import Tensor
@@ -284,6 +284,52 @@ def get_filled_ranges(sequence: Tensor, FILL_TOKEN=-1) -> List[Tuple[int, int]]:
     if start is not None:
         ranges.append((start, len(sequence) - 1))
     return ranges
+
+
+def perform_distributed_replacements(text, translation_table, percentage):
+    """
+    Perform distributed replacements in a text.
+
+    The text is divided into chunks, and for each chunk, we replace a percentage of the characters with a random character from the translation table.
+
+    Args:
+        text: The text to replace characters in.
+        translation_table: A dictionary with the characters to replace and their possible replacements.
+        percentage: The percentage of characters to replace.
+
+    Returns:
+        The text with the distributed replacements.
+    """
+    # Divide the text into chunks
+    chunk_size = math.ceil(len(text) / 10)
+    chunks = [text[i : i + chunk_size] for i in range(0, len(text), chunk_size)]
+    # Replace characters in each chunk
+    for i, chunk in enumerate(chunks):
+        chunk = list(chunk)
+        for j in range(math.ceil(len(chunk) * percentage)):
+            index = random.randint(0, len(chunk) - 1)
+            char = chunk[index]
+            if char in translation_table:
+                chunk[index] = random.choice(translation_table[char])
+        chunks[i] = "".join(chunk)
+    return "".join(chunks)
+
+def combine_attacks(attacks: List[Callable[[str], str]]) -> Callable[[str], str]:
+    """
+    Combine multiple attacks into one.
+
+    Args:
+        attacks: A list of attacks.
+
+    Returns:
+        A function that applies the attacks in order.
+    """
+    def combined_attack(text: str) -> str:
+        for attack in attacks:
+            text = attack(text)
+        return text
+
+    return combined_attack
 
 
 # %%

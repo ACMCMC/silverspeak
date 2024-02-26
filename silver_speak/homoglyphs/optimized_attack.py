@@ -7,7 +7,7 @@ from silver_speak.utils import (
     convert_tokens_to_ids,
     convert_tokens_to_string,
 )
-from silver_speak.identical_map import chars_map
+from silver_speak.homoglyphs.identical_map import chars_map
 import random
 import logging
 

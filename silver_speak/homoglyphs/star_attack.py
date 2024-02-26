@@ -4,7 +4,7 @@ from silver_speak.utils import (
     total_loglikelihood,
 )
 import logging
-from silver_speak.identical_map import chars_map
+from silver_speak.homoglyphs.identical_map import chars_map
 
 logger = logging.getLogger(__name__)
 

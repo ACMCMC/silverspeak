@@ -19,7 +19,7 @@ SPACES_MAP = [
     "\u202f\u2006\u200A",
     "\u205f\u2006\u2006",
 ]
-from silver_speak.identical_map import chars_map
+from silver_speak.homoglyphs.identical_map import chars_map
 
 # SPACES_MAP = [
 #    "\u2007\u2062",
