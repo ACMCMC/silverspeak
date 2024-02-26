@@ -1,32 +1,24 @@
+# %%
+import os
+import pathlib
+import pandas as pd
+
+# Chars map is a CSV file in the parent directory. Ignore everything after the # symbol.
+chars_map = pd.read_csv(
+    os.path.join(pathlib.Path(__file__).parent.parent, "identical_map.csv"),
+    sep=";",
+    header=None,
+    names=["original", "replacement"],
+    comment="#",
+)
+
+# Strip the whitespace from the original and replacement columns
+chars_map["original"] = chars_map["original"].str.strip()
+chars_map["replacement"] = chars_map["replacement"].str.strip()
+
+# Now, we have two columns with row like '0021' and '01C3'. We want to map this to their Unicode characters.
+# We will use the chr() function to convert the hex to a Unicode character.
 chars_map = {
-    "A": ["\u0391"],
-    "B": ["\u0392"],
-    "C": ["\u03f9"],
-    "E": ["\u0395"],
-    "F": ["\u03dc"],
-    "H": ["\u0397"],
-    "I": ["\u0399"],
-    "J": ["\u148d"],
-    "K": ["\u039a", "\u0198"],
-    "M": ["\u039c", "\u004d"],
-    "N": ["\u039d"],
-    "O": ["\u039f"],
-    "P": ["\u03a1"],
-    "Q": ["\u01ea"],
-    "T": ["\u03a4", "𐤯"],  # \U+1092F
-    "X": ["\u03a7"],
-    "Y": ["\u03a5"],
-    "Z": ["\u0396"],
-    "c": ["\u03f2"],
-    "e": ["\u0435"],
-    "g": ["\u0261"],
-    "i": ["\u0456"],
-    "j": ["\u0458"],
-    "o": ["\u03bf"],
-    "p": ["\u0440"],
-    "q": ["\u024b"],
-    "u": ["\u057d"],
-    "v": ["\u03bd"],
-    "x": ["\u0445"],
-    "y": ["\u0443"],
+    chr(int(row["original"], 16)): chr(int(row["replacement"], 16)) for _, row in chars_map.iterrows()
 }
+# %%
