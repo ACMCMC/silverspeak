@@ -3,9 +3,9 @@ import os
 import pathlib
 import pandas as pd
 
-# Chars map is a CSV file in the parent directory. Ignore everything after the # symbol.
+# Chars map is a CSV file in this directory. Ignore everything after the # symbol.
 chars_map = pd.read_csv(
-    os.path.join(pathlib.Path(__file__).parent.parent, "identical_map.csv"),
+    os.path.join(pathlib.Path(__file__).parent, "identical_map.csv"),
     sep=";",
     header=None,
     names=["original", "replacement"],
