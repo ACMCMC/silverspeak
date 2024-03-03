@@ -1,8 +1,9 @@
 import logging
 import random
 
-from .iterative_attack import star_rewrite_attack
+from silver_speak.homoglyphs.random_attack import random_attack
 
+logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 random.seed(42)
@@ -28,13 +29,9 @@ Baird: I think it is important for us to understand that the use of chemical wea
 We have to understand that the use of chemical weapons is very dangerous."""
 
 original_text = """What are the standards required of offered properties? Properties need to be habitable and must meet certain health and safety standards, which the local authority can discuss with you. These standards have been agreed by the Department of Housing, Local Government and Heritage. The local authority will assess your property to make sure it meets the standards. If the property does not meet the standards, the local authority will explain why and can discuss what could be done to bring the property up to standard. Some properties may not be suitable for all those in need of accommodation, due to location or other reasons. However, every effort will be made by the local authority to ensure that offered properties are matched to appropriate beneficiaries."""
+original_text = """What standards are required for offered properties? Properties must be habitable and meet certain health and safety standards, which can be discussed with the local authority. These standards have been agreed upon by the Department of Housing, Local Government and Heritage. The local authority will assess your property to ensure it meets the standards. If the property does not meet the required standards, the local authority will provide an explanation and discuss potential solutions to bring the property up to standard. Some properties may not be suitable for all individuals seeking accommodation due to location or other factors. However, the local authority will make every effort to match offered properties with appropriate beneficiaries."""
 
-rewritten_text = star_rewrite_attack(original_text)
+rewritten_text = random_attack(original_text, percentage=0.15)
 logger.info("\n========================\n")
 logger.info(rewritten_text)
 logger.info("\n========================\n")
-
-## Tokenize the text using GPT2Tokenizer and print its decoded form
-# from transformers import AutoTokenizer
-# tok = AutoTokenizer.from_pretrained('t5-base')
-# print(tok.decode(tok.encode(rewritten_text)))
