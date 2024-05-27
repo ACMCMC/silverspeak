@@ -285,6 +285,24 @@ def get_filled_ranges(sequence: Tensor, FILL_TOKEN=-1) -> List[Tuple[int, int]]:
         ranges.append((start, len(sequence) - 1))
     return ranges
 
+def get_different_ranges(reference: Tensor, target: Tensor) -> List[Tuple[int, int]]:
+    """
+    Get the ranges of the different tokens in a sequence.
+    """
+    ranges = []
+    start = None
+    for i, (ref_token, target_token) in enumerate(zip(reference, target)):
+        if ref_token != target_token:
+            if start is None:
+                start = i
+        else:
+            if start is not None:
+                ranges.append((start, i - 1))
+                start = None
+    if start is not None:
+        ranges.append((start, len(reference) - 1))
+    return ranges
+
 
 def perform_distributed_replacements(text, translation_table, percentage):
     """
