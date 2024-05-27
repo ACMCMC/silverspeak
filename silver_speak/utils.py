@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 # Load GPT-2 tokenizer and model
 MODEL = "gpt2"
 MODEL = "bigscience/bloom-560m"
-tokenizer = AutoTokenizer.from_pretrained(MODEL, use_fast=False)
+tokenizer = AutoTokenizer.from_pretrained(MODEL)  # , use_fast=False)
 model = AutoModelForCausalLM.from_pretrained(MODEL)
 if torch.cuda.is_available():
     model.cuda()
@@ -28,8 +28,6 @@ if torch.cuda.is_available():
 def encode_text(text):
     """Encode text using GPT-2 tokenizer."""
     input_ids = tokenizer.encode(text, return_tensors="pt")[0]
-    if torch.cuda.is_available():
-        input_ids = input_ids.cuda()
     return input_ids
 
 
@@ -67,6 +65,8 @@ def get_loglikelihoods_of_tokens(input_ids: torch.Tensor) -> List[Tuple[int, flo
     Returns a list of tuples (index_id, loglikelihood).
     """
     # Generate predictions
+    # Move the input to the model's device
+    input_ids = input_ids.to(model.device)
     with torch.no_grad():
         outputs = model(input_ids.unsqueeze(0))
 
@@ -314,6 +314,7 @@ def perform_distributed_replacements(text, translation_table, percentage):
         chunks[i] = "".join(chunk)
     return "".join(chunks)
 
+
 def combine_attacks(attacks: List[Callable[[str], str]]) -> Callable[[str], str]:
     """
     Combine multiple attacks into one.
@@ -324,6 +325,7 @@ def combine_attacks(attacks: List[Callable[[str], str]]) -> Callable[[str], str]
     Returns:
         A function that applies the attacks in order.
     """
+
     def combined_attack(text: str) -> str:
         for attack in attacks:
             text = attack(text)
