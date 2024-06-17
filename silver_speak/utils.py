@@ -68,7 +68,7 @@ def get_loglikelihoods_of_tokens(input_ids: torch.Tensor) -> List[Tuple[int, flo
     # Move the input to the model's device
     input_ids = input_ids.to(model.device)
     with torch.no_grad():
-        outputs = model(input_ids.unsqueeze(0))
+        outputs = model(input_ids.unsqueeze(0), output_attentions=True, output_hidden_states=True)
 
     # Shift so that tokens < n predict n
     # For example, if we have 'This is a text', and we run it through the model, it will predict 'is a text [other token]' from 'This is a text'. We want to compare 'is a text' with 'is a text' to get the loglikelihood, so we remove the first token from the input and the last token from the output.
@@ -86,7 +86,7 @@ def get_loglikelihoods_of_tokens(input_ids: torch.Tensor) -> List[Tuple[int, flo
     for i, word in enumerate(shift_labels):
         loglikelihoods.append((word.item(), -loss[i].item()))
 
-    return loglikelihoods
+    return loglikelihoods, outputs
 
 
 def total_loglikelihood(tokens_loglikelihoods: List[Tuple[int, float]]) -> float:
