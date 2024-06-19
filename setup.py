@@ -15,4 +15,8 @@ setup(
             'silver_speak = silver_speak.silver_speak:main',
         ],
     },
+    # The file silver_speak/homoglyphs/identical_map.csv needs to be included in the package
+    package_data={
+        'silver_speak.homoglyphs': ['identical_map.csv'],
+    },
 )
