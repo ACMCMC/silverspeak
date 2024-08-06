@@ -1,0 +1,5 @@
+__pycache__
+tables/
+figures/
+results_csv/
+.venv/
