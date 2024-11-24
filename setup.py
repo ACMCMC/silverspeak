@@ -6,7 +6,7 @@ from setuptools import setup, find_packages
 setup(
     name="silver_speak",
     version="1.0",
-    packages=["silver_speak", "experiments"],
+    packages=["silver_speak", "silver_speak.homoglyphs", "experiments"],
     include_package_data=True,
     # The file silver_speak/homoglyphs/identical_map.csv needs to be included in the package
     # The files under experiments/models/fast_detectgpt/local_infer_ref/ need to be included in the package
