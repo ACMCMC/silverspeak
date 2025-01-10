@@ -23,9 +23,9 @@ from experiments.evaluators.evaluator_openai import (OpenAIDetectorConfig,
 from experiments.evaluators.evaluator_watermark import (WatermarkConfig,
                                                         WatermarkModel)
 from experiments.evaluators.pipeline import DetectionPipeline
-from silver_speak.homoglyphs.greedy_attack import \
+from silverspeak.homoglyphs.greedy_attack import \
     greedy_attack as greedy_attack_homoglyphs
-from silver_speak.homoglyphs.random_attack import \
+from silverspeak.homoglyphs.random_attack import \
     random_attack as random_attack_homoglyphs
 
 logging.basicConfig(level=logging.INFO)

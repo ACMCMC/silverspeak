@@ -1,5 +1,5 @@
 # %%
-from silver_speak.homoglyphs.identical_map import chars_map
+from silverspeak.homoglyphs.identical_map import chars_map
 
 translation_table = str.maketrans({k: v[0] for k, v in chars_map.items()})
 

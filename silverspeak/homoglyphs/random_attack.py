@@ -1,5 +1,5 @@
 # %%
-from silver_speak.homoglyphs.identical_map import chars_map
+from silverspeak.homoglyphs.identical_map import chars_map
 import random
 
 

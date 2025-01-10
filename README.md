@@ -1,7 +1,24 @@
 # SilverSpeak
-Code and experiments supplementing the paper "SilverSpeak: Evading AI-Generated Content Detectors using Homoglyphs"
+This is a Python library to perform homoglyph-based attacks on text.
+
+We also include the experiments supplementing the paper "SilverSpeak: Evading AI-Generated Content Detectors using Homoglyphs".
 
 ## Installation
+You can install this package from PyPI by running:
+```
+pip install silverspeak
+```
+
+## Usage example
+```python
+from silverspeak.homoglyphs.random_attack import random_attack
+
+text = "Hello, world!"
+attacked_text = random_attack(text, 0.1)
+print(attacked_text)
+```
+
+## Installation from source
 First, you may want to work in a virtual environment. If you don't have one, you can create it by running:
 ```
 python -m venv .venv
@@ -26,7 +43,7 @@ And finally, install this package by running:
 pip install -e .
 ```
 
-## Reproducing the results
+## Reproducing the experimental results from the paper
 To reproduce the results, you'll need a free Hugging Face account. You can register for an account here: https://huggingface.co/
 
 Then, you'll need to sign into your account using the CLI with a token that has `write` permissions (more information [here](https://huggingface.co/docs/huggingface_hub/en/guides/cli)). To do that, just run:

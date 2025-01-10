@@ -1,7 +1,7 @@
 import logging
 import random
 
-from silver_speak.homoglyphs.random_attack import random_attack
+from silverspeak.homoglyphs.random_attack import random_attack
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)

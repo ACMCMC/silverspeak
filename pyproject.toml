@@ -1,0 +1,20 @@
+[project]
+name = "silverspeak"
+version = "1.0.0"
+description = "A Python library to perform homoglyph-based attacks on text."
+readme = "README.md"
+license = {text = "GPLv3"}
+authors = [
+	{name = "Aldan Creo", email = "os@acmc.fyi"}
+]
+keywords = ["homoglyph", "attack", "text", "security"]
+
+[build-system]
+requires = ["setuptools", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+packages = ["silverspeak", "silverspeak.homoglyphs"]
+
+[tool.setuptools.package-data]
+"silverspeak.homoglyphs" = ["identical_map.csv"]

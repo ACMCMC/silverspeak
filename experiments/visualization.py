@@ -92,9 +92,9 @@ def sort_func_name(x):
 
 
 def get_attack_human_name(item):
-    if item["func"] == "silver_speak.homoglyphs.random_attack":
+    if item["func"] == "silverspeak.homoglyphs.random_attack":
         return f"{round(item['params']['percentage'] * 100)}\%"
-    elif item["func"] == "silver_speak.homoglyphs.greedy_attack":
+    elif item["func"] == "silverspeak.homoglyphs.greedy_attack":
         return "Greedy"
     elif item["func"] == "__main__":
         return "Original"
@@ -278,7 +278,7 @@ if __name__ == "__main__":
 
     # %%
 
-    # Discard every attack that doesn't begin by [silver_speak.homoglyphs.random_attack, silver_speak.homoglyphs.greedy_attack, __main__]
+    # Discard every attack that doesn't begin by [silverspeak.homoglyphs.random_attack, silverspeak.homoglyphs.greedy_attack, __main__]
     all_metrics_for_all_datasets_and_systems_filtered = [
         {
             **item,
@@ -351,7 +351,7 @@ if __name__ == "__main__":
     """
     # Example of an entry in all_metrics_for_all_datasets_and_systems:
     {
-        "key": "watermarked_c4_dataset_watermark_silver_speak.homoglyphs.optimized_attack_percentage=None_percentage_to_replace=0.15",
+        "key": "watermarked_c4_dataset_watermark_silverspeak.homoglyphs.optimized_attack_percentage=None_percentage_to_replace=0.15",
         "metrics": {
             "accuracy": 0.8585,
             "f1": 0.8357515960533952,
@@ -359,7 +359,7 @@ if __name__ == "__main__":
             "recall": 0.995850622406639,
         },
         "detector": "watermark",
-        "func": "silver_speak.homoglyphs.optimized_attack",
+        "func": "silverspeak.homoglyphs.optimized_attack",
         "params": {"percentage": None, "percentage_to_replace": 0.15},
     }
     """
