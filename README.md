@@ -1,7 +1,7 @@
 # SilverSpeak
 This is a Python library to perform homoglyph-based attacks on text.
 
-We also include the experiments supplementing the paper "SilverSpeak: Evading AI-Generated Content Detectors using Homoglyphs".
+We also include the experiments supplementing the paper "SilverSpeak: Evading AI-Generated Text Detectors using Homoglyphs".
 
 ## Installation
 You can install this package from PyPI by running:
