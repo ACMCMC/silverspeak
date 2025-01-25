@@ -3,3 +3,5 @@ tables/
 figures/
 results_csv/
 .venv/
+*.pickle
+dist/
