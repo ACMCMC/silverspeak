@@ -1,3 +1,4 @@
-
 from silverspeak.homoglyphs.random_attack import random_attack
 from silverspeak.homoglyphs.greedy_attack import greedy_attack
+from silverspeak.homoglyphs.normalize import normalize_text
+from silverspeak.homoglyphs.utils import HomoglyphReplacer

@@ -24,7 +24,7 @@ class HomoglyphReplacer:
         # This object will be used to keep the random state
         self.random_state = random.Random(x=random_seed)
         self.reverse_chars_map: Mapping[str, str] = self._create_reverse_chars_map()
-        self.reverse_translation_table = str.maketrans(self.reverse_chars_map)
+        self.normalization_table = self._create_normalization_table()
 
     def _load_chars_map(self):
         files_mapping = {
@@ -35,7 +35,9 @@ class HomoglyphReplacer:
         # Load the JSON files
         chars_map = {}
         for homoglyph_type in self.types_of_homoglyphs_to_use:
-            with open(Path(__file__).parent / files_mapping[homoglyph_type], "r") as file:
+            with open(
+                Path(__file__).parent / files_mapping[homoglyph_type], "r"
+            ) as file:
                 data = json.load(file)
                 for key, value in data.items():
                     if key not in chars_map:
@@ -56,6 +58,16 @@ class HomoglyphReplacer:
                 reverse_map[value] = key
         return reverse_map
 
+    def _create_normalization_table(self):
+        # Don't include any entries for characters that are in NFKD normalization form
+        # I.e., only include entries for characters that are not in normalization form (which are the homoglyphs)
+        nfc_entries = {
+            key: value
+            for key, value in self.reverse_chars_map.items()
+            if not unicodedata.is_normalized("NFKD", key)
+        }
+        return str.maketrans(nfc_entries)
+
     def is_replaceable(self, char: str) -> bool:
         return (
             char in self.chars_map
@@ -67,9 +79,9 @@ class HomoglyphReplacer:
 
     def is_dangerous(self, char: str) -> bool:
         return char in self.reverse_chars_map
-    
+
     def get_original(self, char: str) -> str:
         return self.reverse_chars_map[char]
 
     def normalize(self, text: str) -> str:
-        return text.translate(self.reverse_translation_table)
+        return text.translate(self.normalization_table)
