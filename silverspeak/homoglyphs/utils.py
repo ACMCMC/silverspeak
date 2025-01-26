@@ -23,6 +23,8 @@ class HomoglyphReplacer:
         self.chars_map: Mapping[str, List[str]] = self._load_chars_map()
         # This object will be used to keep the random state
         self.random_state = random.Random(x=random_seed)
+        self.reverse_chars_map: Mapping[str, str] = self._create_reverse_chars_map()
+        self.reverse_translation_table = str.maketrans(self.reverse_chars_map)
 
     def _load_chars_map(self):
         files_mapping = {
@@ -47,11 +49,27 @@ class HomoglyphReplacer:
 
         return chars_map
 
-    def is_replaceable(self, char):
+    def _create_reverse_chars_map(self):
+        reverse_map = {}
+        for key, values in self.chars_map.items():
+            for value in values:
+                reverse_map[value] = key
+        return reverse_map
+
+    def is_replaceable(self, char: str) -> bool:
         return (
             char in self.chars_map
             and unicodedata.category(char) in self.unicode_categories_to_replace
         )
 
-    def get_homoglpyh(self, char):
+    def get_homoglpyh(self, char: str) -> str:
         return self.random_state.choice(self.chars_map[char])
+
+    def is_dangerous(self, char: str) -> bool:
+        return char in self.reverse_chars_map
+    
+    def get_original(self, char: str) -> str:
+        return self.reverse_chars_map[char]
+
+    def normalize(self, text: str) -> str:
+        return text.translate(self.reverse_translation_table)
