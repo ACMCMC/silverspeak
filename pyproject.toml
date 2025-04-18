@@ -16,7 +16,7 @@ keywords = [
 [tool.poetry.dependencies]
 python = "^3.9"
 pandas = "^2.2.2"
-uniscripts = {git = "https://github.com/ACMCMC/uniscripts.git"}
+unicodedataplus = "^16.0.0.post1"
 
 [tool.poetry.group.dev.dependencies]
 ipykernel = "^6.29.5"

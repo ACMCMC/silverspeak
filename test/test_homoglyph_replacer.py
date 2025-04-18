@@ -126,7 +126,7 @@ class TestHomoglyphReplacer(unittest.TestCase):
         expected_output = "hello world"
 
         # Perform normalization
-        output = self.replacer.normalize(input_text, strategy="dominant_script")
+        output = self.replacer.normalize(input_text, strategy="dominant_script_and_block")
 
         # Assert the output matches the expected result
         self.assertEqual(output, expected_output)

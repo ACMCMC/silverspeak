@@ -2,11 +2,17 @@ import json
 import random
 import unicodedata
 from pathlib import Path
-from typing import List, Literal, Mapping, Set, Tuple
+from typing import List, Literal, Mapping, Optional, Set, Tuple
+import logging
 
-from uniscripts import get_script_counts, is_script
+import unicodedataplus
+from collections import Counter
 
-from silverspeak.homoglyphs.utils import _DEFAULT_HOMOGLYPHS_TO_USE, _DEFAULT_UNICODE_CATEGORIES_TO_REPLACE, TYPES_OF_HOMOGLYPHS
+from silverspeak.homoglyphs.utils import (
+    _DEFAULT_HOMOGLYPHS_TO_USE,
+    _DEFAULT_UNICODE_CATEGORIES_TO_REPLACE,
+    TYPES_OF_HOMOGLYPHS,
+)
 
 
 class HomoglyphReplacer:
@@ -23,11 +29,14 @@ class HomoglyphReplacer:
         normalization_table (dict): Table for normalizing text.
     """
 
-
     def __init__(
         self,
-        unicode_categories_to_replace: Set[str] = _DEFAULT_UNICODE_CATEGORIES_TO_REPLACE,
-        types_of_homoglyphs_to_use: List[TYPES_OF_HOMOGLYPHS] = _DEFAULT_HOMOGLYPHS_TO_USE,
+        unicode_categories_to_replace: Set[
+            str
+        ] = _DEFAULT_UNICODE_CATEGORIES_TO_REPLACE,
+        types_of_homoglyphs_to_use: List[
+            TYPES_OF_HOMOGLYPHS
+        ] = _DEFAULT_HOMOGLYPHS_TO_USE,
         replace_with_priority: bool = False,
         random_seed: int = 42,
     ):
@@ -47,7 +56,6 @@ class HomoglyphReplacer:
         # This object will be used to keep the random state
         self.random_state = random.Random(x=random_seed)
         self.reverse_chars_map: Mapping[str, str] = self._create_reverse_chars_map()
-        self._base_normalization_map = self._create_base_normalization_map()
         self.normalization_translation_tables = {}
 
     def _load_chars_map(self) -> Mapping[str, List[str]]:
@@ -60,7 +68,6 @@ class HomoglyphReplacer:
         files_mapping = {
             "identical": "identical_map.json",
             "confusables": "unicode_confusables_map.json",
-            "confusables_same_case": "unicode_confusables_same_case_map.json",
             "ocr": "ocr_chars_map.json",
             "ocr_refined": "ocr_chars_refined_map.json",
         }
@@ -165,6 +172,20 @@ class HomoglyphReplacer:
         """
         return self.reverse_chars_map[char]
 
+    def _get_script_counts(self, text: str) -> Mapping[str, int]:
+        """
+        Count the occurrences of each script in the text.
+
+        Args:
+            text (str): Text to analyze.
+
+        Returns:
+            Mapping[str, int]: Counts of characters in each script.
+        """
+
+        script_counts = Counter(unicodedataplus.script(char) for char in text)
+        return dict(script_counts)
+
     def _detect_dominant_script(self, text: str) -> str:
         """
         Detect the dominant script in the text.
@@ -175,33 +196,99 @@ class HomoglyphReplacer:
         Returns:
             str: Dominant script in the text.
         """
-        script_counts: Mapping[str, int] = get_script_counts(text)
-        return max(script_counts, key=script_counts.get)
+        script_counts = self._get_script_counts(text=text)
+        total_count = sum(script_counts.values())
+        dominant_script = max(script_counts, key=script_counts.get)
+        if script_counts[dominant_script] / total_count < 0.75:
+            logging.warning(
+                f"The dominant script '{dominant_script}' comprises less than 75% of the total character count. This is unusual, as most texts predominantly consist of characters from a single script. Proceed with caution, as this may affect the reliability of the analysis."
+            )
+        return dominant_script
 
-    def _get_normalization_table_for_script(self, script: str) -> Mapping[int, str]:
+    def _get_block_counts(self, text: str) -> Mapping[str, int]:
         """
-        Get the normalization table for a script.
+        Count the number of characters in each Unicode block in the text.
 
         Args:
-            script (str): Script to get the normalization table for.
+            text (str): Text to analyze.
 
         Returns:
-            Mapping[int, str]: Normalization table for the script.
+            Mapping[str, int]: Counts of characters in each Unicode block.
+        """
+        block_counts = Counter(unicodedataplus.block(char) for char in text)
+        return dict(block_counts)
+
+    def _detect_dominant_block(self, text: str) -> str:
+        """
+        Detect the dominant Unicode block in the text.
+
+        Args:
+            text (str): Text to analyze.
+
+        Returns:
+            str: Dominant Unicode block in the text.
+        """
+        block_counts = self._get_block_counts(text=text)
+        total_count = sum(block_counts.values())
+        dominant_block = max(block_counts, key=block_counts.get)
+        if block_counts[dominant_block] / total_count < 0.75:
+            logging.warning(
+                f"The dominant Unicode block '{dominant_block}' comprises less than 75% of the total character count. This is unusual, as most texts predominantly consist of characters from a single block. Proceed with caution, as this may affect the reliability of the analysis."
+            )
+        return dominant_block
+
+    def _is_script_and_block(
+        self, char: str, script: str, block: Optional[str]
+    ) -> bool:
+        if not block:
+            return unicodedataplus.script(char) == script
+        else:
+            return (
+                unicodedataplus.script(char) == script
+                and unicodedataplus.block(char) == block
+            )
+
+    def _get_normalization_table_for_script_and_block(
+        self, script: str, block: str = None, only_replace_non_normalized=False, **kwargs
+    ) -> Mapping[int, str]:
+        """
+        Generate a normalization table for a specific script.
+
+        Args:
+            script (str): The script for which the normalization table is generated.
+            only_replace_non_normalized (bool): If True, only replace non-normalized characters.
+
+        Returns:
+            Mapping[int, str]: A translation table for normalizing text based on the specified script.
         """
         # Check if it's in our in-memory cache
         if script in self.normalization_translation_tables:
             return self.normalization_translation_tables[script]
 
         # Generate the normalization table.
-        base_normalization_map: Mapping[str, str] = self._base_normalization_map
-
-        # Create a dictionary with the NFC entries where the value is in the script we want to normalize (i.e. (this_or_other_script, script) pairs)
+        # Create a dictionary with the NFKD entries where the value is in the script we want to normalize (i.e. (this_or_other_script, script) pairs)
         script_normalization_map: Mapping[str, str] = {
             key: value
-            for key, value in base_normalization_map.items()
-            if is_script(value, script)
+            for key, value in self.reverse_chars_map.items()
+            # Keep the NFKD entries where the value is in the desired script
+            if
+            # The char we normalize into should be normalized
+            unicodedata.is_normalized("NFKD", value)
+            and (
+                # If we activate only_replace_non_normalized, then the char we normalize from should NOT be normalized
+                not (
+                    unicodedata.is_normalized("NFKD", key)
+                    and only_replace_non_normalized
+                )
+            )
+            and unicodedata.category(key) in self.unicode_categories_to_replace
+            # The result we get after normalizing should be in the appropriate script and block
+            and self._is_script_and_block(char=value, script=script, block=block)
         }
-        script_normalization_translation_table: Mapping[int, str] = str.maketrans(script_normalization_map)
+
+        script_normalization_translation_table: Mapping[int, str] = str.maketrans(
+            script_normalization_map
+        )
 
         self.normalization_translation_tables[script] = (
             script_normalization_translation_table
@@ -212,7 +299,10 @@ class HomoglyphReplacer:
     def normalize(
         self,
         text: str,
-        strategy: Literal["dominant_script", "tokenization"] = "dominant_script",
+        strategy: Literal[
+            "dominant_script", "dominant_script_and_block", "tokenization"
+        ] = "dominant_script_and_block",
+        **kwargs
     ) -> str:
         """
         Normalize text by replacing homoglyphs with their original characters,
@@ -229,9 +319,16 @@ class HomoglyphReplacer:
             return text
 
         if strategy == "dominant_script":
-            dominant_script = self._detect_dominant_script(text)
-            normalization_table = self._get_normalization_table_for_script(
-                dominant_script
+            dominant_script = self._detect_dominant_script(text=text)
+            normalization_table = self._get_normalization_table_for_script_and_block(
+                script=dominant_script, **kwargs
+            )
+            return text.translate(normalization_table)
+        if strategy == "dominant_script_and_block":
+            dominant_script = self._detect_dominant_script(text=text)
+            dominant_block = self._detect_dominant_block(text=text)
+            normalization_table = self._get_normalization_table_for_script_and_block(
+                script=dominant_script, block=dominant_block, **kwargs
             )
             return text.translate(normalization_table)
         elif strategy == "tokenization":
