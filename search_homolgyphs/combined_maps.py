@@ -6,7 +6,8 @@ import pathlib
 # Define the file paths
 file_paths = [
     os.path.join(pathlib.Path(__file__).parent, "identical_map.json"),
-    os.path.join(pathlib.Path(__file__).parent, "unicode_confusables.json"),
+    os.path.join(pathlib.Path(__file__).parent, "unicode_confusables_map.json"),
+    os.path.join(pathlib.Path(__file__).parent, "unicode_confusables_same_case_map.json"),
     os.path.join(pathlib.Path(__file__).parent, "ocr_chars_map.json"),
 ]
 

@@ -18,6 +18,9 @@ python = "^3.9"
 pandas = "^2.2.2"
 uniscripts = {git = "https://github.com/ACMCMC/uniscripts.git"}
 
+[tool.poetry.group.dev.dependencies]
+ipykernel = "^6.29.5"
+
 [build-system]
 requires = ["poetry-core>=1.0.0"]
 build-backend = "poetry.core.masonry.api"
@@ -26,4 +29,4 @@ build-backend = "poetry.core.masonry.api"
 packages = ["silverspeak", "silverspeak.homoglyphs"]
 
 [tool.setuptools.package-data]
-"silverspeak.homoglyphs" = ["identical_map.json", "unicode_confusables_map.json", "ocr_chars_map.json"]
+"silverspeak.homoglyphs" = ["identical_map.json", "unicode_confusables_map.json", "ocr_chars_map.json", "ocr_chars_refined_map.json"]
