@@ -55,7 +55,9 @@ class HomoglyphReplacer:
         self.chars_map = self._load_chars_map()
         # This object will be used to keep the random state
         self.random_state = random.Random(x=random_seed)
-        self.reverse_chars_map: Mapping[str, str] = self._create_reverse_chars_map()
+        self.reverse_chars_map: Mapping[str, List[str]] = (
+            self._create_reverse_chars_map()
+        )
         self.normalization_translation_tables = {}
 
     def _load_chars_map(self) -> Mapping[str, List[str]]:
@@ -102,24 +104,9 @@ class HomoglyphReplacer:
             for value in values:
                 # If there's already a key for this value, don't overwrite it - the first one we find is the highest priority
                 if value not in reverse_map:
-                    reverse_map[value] = key
+                    reverse_map.setdefault(value, []).append(key)
 
         return reverse_map
-
-    def _create_base_normalization_map(self) -> Mapping[str, str]:
-        """
-        Create a base normalization map for the most common homoglyphs.
-
-        Returns:
-            Mapping[str, str]: Base normalization map.
-        """
-        base_normalization_map: Mapping[str, str] = {
-            key: value
-            for key, value in self.reverse_chars_map.items()
-            if not unicodedata.is_normalized("NFKD", key)
-            and unicodedata.category(key) in self.unicode_categories_to_replace
-        }
-        return base_normalization_map
 
     def is_replaceable(self, char: str) -> bool:
         """
@@ -160,7 +147,7 @@ class HomoglyphReplacer:
         """
         return char in self.reverse_chars_map
 
-    def get_original(self, char: str) -> str:
+    def get_original(self, char: str) -> List[str]:
         """
         Get the original character for a homoglyph.
 
@@ -249,7 +236,11 @@ class HomoglyphReplacer:
             )
 
     def _get_normalization_table_for_script_and_block(
-        self, script: str, block: str = None, only_replace_non_normalized=False, **kwargs
+        self,
+        script: str,
+        block: str = None,
+        only_replace_non_normalized=False,
+        **kwargs,
     ) -> Mapping[int, str]:
         """
         Generate a normalization table for a specific script.
@@ -267,24 +258,30 @@ class HomoglyphReplacer:
 
         # Generate the normalization table.
         # Create a dictionary with the NFKD entries where the value is in the script we want to normalize (i.e. (this_or_other_script, script) pairs)
-        script_normalization_map: Mapping[str, str] = {
-            key: value
-            for key, value in self.reverse_chars_map.items()
-            # Keep the NFKD entries where the value is in the desired script
-            if
-            # The char we normalize into should be normalized
-            unicodedata.is_normalized("NFKD", value)
-            and (
-                # If we activate only_replace_non_normalized, then the char we normalize from should NOT be normalized
-                not (
-                    unicodedata.is_normalized("NFKD", key)
-                    and only_replace_non_normalized
-                )
-            )
-            and unicodedata.category(key) in self.unicode_categories_to_replace
-            # The result we get after normalizing should be in the appropriate script and block
-            and self._is_script_and_block(char=value, script=script, block=block)
-        }
+        script_normalization_map: Mapping[str, str] = {}
+        for key, values in self.reverse_chars_map.items():
+            for value in values:
+                # Keep the NFKD entries where the value is in the desired script
+                if (
+                    (
+                        # The char we normalize into should be normalized
+                        unicodedata.is_normalized("NFKD", value)
+                    )
+                    and (
+                        # If we activate only_replace_non_normalized, then the char we normalize from should NOT be normalized
+                        not (
+                            unicodedata.is_normalized("NFKD", key)
+                            and only_replace_non_normalized
+                        )
+                    )
+                    and (unicodedata.category(key) in self.unicode_categories_to_replace)
+                    and (
+                        # The result we get after normalizing should be in the appropriate script and block
+                        self._is_script_and_block(char=value, script=script, block=block)
+                    )
+                ):
+                    script_normalization_map[key] = value
+                
 
         script_normalization_translation_table: Mapping[int, str] = str.maketrans(
             script_normalization_map
@@ -302,7 +299,7 @@ class HomoglyphReplacer:
         strategy: Literal[
             "dominant_script", "dominant_script_and_block", "tokenization"
         ] = "dominant_script_and_block",
-        **kwargs
+        **kwargs,
     ) -> str:
         """
         Normalize text by replacing homoglyphs with their original characters,
