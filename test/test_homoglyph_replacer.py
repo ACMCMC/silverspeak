@@ -1,143 +1,77 @@
-import unittest
+import pytest
 from silverspeak.homoglyphs.homoglyph_replacer import HomoglyphReplacer
+from silverspeak.homoglyphs.utils import (
+    NormalizationStrategies
+)
+
+POSSIBLE_STRATEGIES = [
+    NormalizationStrategies.DOMINANT_SCRIPT,
+    NormalizationStrategies.DOMINANT_SCRIPT_AND_BLOCK,
+    NormalizationStrategies.CONTEXT_AWARE,
+]
+
+TEXTS_TO_TEST = [
+    ("hеllо wоrld", "hello world"),  # Mixed scripts
+    (
+        "heIIo world",
+        "hello world",
+    ),  # Mixes I and l, which are both Latin but not the same case (Unicode category is different: Ll vs. Lu)
+    ("расе", "расе"),  # All Cyrillic
+    ("言語是溝通的橋樑", "訁語是溝通的橋樑"),  # Chinese sentence with 言 and 訁
+    (
+        "言行一致是成功的關鍵",
+        "訁行一致是成功的關鍵",
+    ),  # Another Chinese sentence with 言 and 訁
+    ("", ""),  # Empty string
+    ("hello world", "hello world"),  # No homoglyphs
+]
 
 
-class TestHomoglyphReplacer(unittest.TestCase):
-    def setUp(self):
-        """
-        Set up a HomoglyphReplacer instance for testing.
-        """
-        self.replacer = HomoglyphReplacer()
-
-    def test_normalize_dominant_script_latin_cyrillic(self):
-        """
-        Test the `normalize` method with the 'dominant_script' strategy.
-        """
-        # Mock data for testing
-        self.replacer.reverse_chars_map = {
-            "а": "a",  # Cyrillic 'a'
-            "е": "e",  # Cyrillic 'e'
-        }
-        self.replacer._base_normalization_map = {
-            "а": "a",
-            "е": "e",
-        }
-        self.replacer.normalization_translation_tables = {}
-        self.replacer._detect_dominant_script = lambda text: "Latin"
-
-        # Input text containing homoglyphs
-        input_text = "rаcеs"  # Cyrillic homoglyphs for "race"
-        expected_output = "races"
-
-        # Perform normalization
-        output = self.replacer.normalize(input_text, strategy="dominant_script")
-
-        # Assert the output matches the expected result
-        self.assertEqual(output, expected_output)
-
-    def test_normalize_unsupported_strategy(self):
-        """
-        Test the `normalize` method with an unsupported strategy.
-        """
-        with self.assertRaises(NotImplementedError):
-            self.replacer.normalize("test", strategy="unsupported_strategy")
-
-    def test_normalize_tokenization_strategy(self):
-        """
-        Test the `normalize` method with the 'tokenization' strategy.
-        """
-        with self.assertRaises(NotImplementedError):
-            self.replacer.normalize("test", strategy="tokenization")
-
-    def test_normalize_dominant_script_mixed_scripts(self):
-        """
-        Test the `normalize` method with mixed scripts in the input text.
-        """
-        # Mock data for testing
-        self.replacer.reverse_chars_map = {
-            "а": "a",  # Cyrillic 'a'
-            "е": "e",  # Cyrillic 'e'
-            "о": "o",  # Cyrillic 'o'
-        }
-        self.replacer._base_normalization_map = {
-            "а": "a",
-            "е": "e",
-            "о": "o",
-        }
-        self.replacer.normalization_translation_tables = {}
-        self.replacer._detect_dominant_script = lambda text: "Latin"
-
-        # Input text containing mixed scripts
-        input_text = "hеllо wоrld"  # Cyrillic homoglyphs for "hello world"
-        expected_output = "hello world"
-
-        # Perform normalization
-        output = self.replacer.normalize(input_text, strategy="dominant_script")
-
-        # Assert the output matches the expected result
-        self.assertEqual(output, expected_output)
-
-    def test_normalize_dominant_script_all_cyrillic(self):
-        """
-        Test the `normalize` method when the dominant script is Cyrillic.
-        """
-        # Mock data for testing
-        self.replacer.reverse_chars_map = {
-            "а": "a",  # Cyrillic 'a'
-            "е": "e",  # Cyrillic 'e'
-        }
-        self.replacer._base_normalization_map = {
-            "а": "a",
-            "е": "e",
-        }
-        self.replacer.normalization_translation_tables = {}
-        self.replacer._detect_dominant_script = lambda text: "Cyrillic"
-
-        # Input text containing homoglyphs
-        input_text = "расе"  # Cyrillic homoglyphs for "race"
-        expected_output = "расе"  # No change since dominant script is Cyrillic
-
-        # Perform normalization
-        output = self.replacer.normalize(input_text, strategy="dominant_script")
-
-        # Assert the output matches the expected result
-        self.assertEqual(output, expected_output)
-
-    def test_normalize_empty_string(self):
-        """
-        Test the `normalize` method with an empty string.
-        """
-        # Input text is empty
-        input_text = ""
-        expected_output = ""
-
-        # Perform normalization
-        output = self.replacer.normalize(input_text, strategy="dominant_script")
-
-        # Assert the output matches the expected result
-        self.assertEqual(output, expected_output)
-
-    def test_normalize_no_homoglyphs(self):
-        """
-        Test the `normalize` method with text containing no homoglyphs.
-        """
-        # Input text with no homoglyphs
-        input_text = "hello world"
-        expected_output = "hello world"
-
-        # Perform normalization
-        output = self.replacer.normalize(input_text, strategy="dominant_script_and_block")
-
-        # Assert the output matches the expected result
-        self.assertEqual(output, expected_output)
-
-    def test_normalize_invalid_strategy(self):
-        """
-        Test the `normalize` method with an invalid strategy.
-        """
-        with self.assertRaises(NotImplementedError):
-            self.replacer.normalize("test", strategy="invalid_strategy")
+@pytest.fixture
+def replacer():
+    """
+    Fixture to set up a HomoglyphReplacer instance for testing.
+    """
+    return HomoglyphReplacer()
 
 
-if __name__ == "__main__":
-    unittest.main()
+def test_normalize_unsupported_strategy(replacer):
+    """
+    Test the `normalize` method with unsupported strategies.
+    """
+    with pytest.raises(NotImplementedError):
+        replacer.normalize("test", strategy="unsupported_strategy")
+
+
+@pytest.mark.parametrize(
+    "input_text, expected_output",
+    TEXTS_TO_TEST,
+)
+@pytest.mark.parametrize("strategy", POSSIBLE_STRATEGIES)
+def test_normalize(replacer, input_text, expected_output, strategy):
+    """
+    Test the `normalize` method with various inputs and strategies.
+    """
+    result = replacer.normalize(input_text, strategy=strategy)
+    assert result == expected_output
+
+
+# Test that succeeds if at least one of the strategies works in all cases
+@pytest.mark.parametrize(
+    "input_text, expected_output",
+    TEXTS_TO_TEST,
+)
+def test_normalize_with_fallback(replacer, input_text, expected_output):
+    """
+    Test the `normalize` method with various inputs and strategies. Unlike the previous test,
+    this one has a looser assertion: it only checks that at least one of the strategies works.
+
+    That means that *there is at least one strategy that works for all texts* - not necessarily the same one, though.
+    """
+    # Try each strategy and check if at least one works
+    for strategy in POSSIBLE_STRATEGIES:
+        result = replacer.normalize(input_text, strategy=strategy)
+        if result == expected_output:
+            break
+    else:
+        pytest.fail(f"None of the strategies worked for input: {input_text}")

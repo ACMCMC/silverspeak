@@ -11,7 +11,8 @@ from collections import Counter
 from silverspeak.homoglyphs.utils import (
     _DEFAULT_HOMOGLYPHS_TO_USE,
     _DEFAULT_UNICODE_CATEGORIES_TO_REPLACE,
-    TYPES_OF_HOMOGLYPHS,
+    NormalizationStrategies,
+    TypesOfHomoglyphs,
 )
 
 
@@ -35,7 +36,7 @@ class HomoglyphReplacer:
             str
         ] = _DEFAULT_UNICODE_CATEGORIES_TO_REPLACE,
         types_of_homoglyphs_to_use: List[
-            TYPES_OF_HOMOGLYPHS
+            TypesOfHomoglyphs
         ] = _DEFAULT_HOMOGLYPHS_TO_USE,
         replace_with_priority: bool = False,
         random_seed: int = 42,
@@ -58,9 +59,13 @@ class HomoglyphReplacer:
         self.reverse_chars_map: Mapping[str, List[str]] = (
             self._create_reverse_chars_map()
         )
-        self.normalization_translation_tables = {}
+        self.base_normalization_map: Mapping[str, List[str]] = (
+            self._get_base_normalization_map()
+        )
+        # self.normalization_translaion_tables = {} # Do not use this. Using a translation table is too naive at times (we may need to consider context for normalization). Instead, keep mappings in a dict and use them when needed.
+        self.normalization_translation_maps = {}
 
-    def _load_chars_map(self) -> Mapping[str, List[str]]:
+    def _load_chars_map(self, ensure_bidirectionality=True) -> Mapping[str, List[str]]:
         """
         Load the character mappings from JSON files.
 
@@ -68,10 +73,10 @@ class HomoglyphReplacer:
             Mapping[str, List[str]]: Mapping of characters to their homoglyphs.
         """
         files_mapping = {
-            "identical": "identical_map.json",
-            "confusables": "unicode_confusables_map.json",
-            "ocr": "ocr_chars_map.json",
-            "ocr_refined": "ocr_chars_refined_map.json",
+            TypesOfHomoglyphs.IDENTICAL: "identical_map.json",
+            TypesOfHomoglyphs.CONFUSABLES: "unicode_confusables_map.json",
+            TypesOfHomoglyphs.OCR: "ocr_chars_map.json",
+            TypesOfHomoglyphs.OCR_REFINED: "ocr_chars_refined_map.json",
         }
         # Load the JSON files
         chars_map = {}
@@ -80,31 +85,46 @@ class HomoglyphReplacer:
                 Path(__file__).parent / files_mapping[homoglyph_type], "r"
             ) as file:
                 data = json.load(file)
-                for key, value in data.items():
+                for key, values in data.items():
                     if key not in chars_map:
+                        # Create an entry for the key if it doesn't exist
                         chars_map[key] = []
-                    chars_map[key].extend(value)
+                    for v in values:
+                        # We only add the values that are not duplicated
+                        # We check if the value is in the list of homoglyphs for this character
+                        if v not in chars_map[key]:
+                            # If it's not there, we add it
+                            chars_map[key].append(v)
+
+                        if ensure_bidirectionality:
+                            # This means that if we have a mapping from A to B, we also have a mapping from B to A
+                            # To ensure that we don't have duplicates, we check if the value is already in the map as a key
+                            if v not in chars_map:
+                                # If it's not there, we add it because we won't have a duplicate
+                                chars_map[v] = [key]
+                            else:
+                                # If it is, we only add the key if it's not already there
+                                if key not in chars_map[v]:
+                                    chars_map[v].append(key)
 
         if self.replace_with_priority:
             # Only keep the first element in the list
-            for key, value in chars_map.items():
-                chars_map[key] = [value[0]]
+            for key, values in chars_map.items():
+                chars_map[key] = [values[0]]
 
         return chars_map
 
-    def _create_reverse_chars_map(self) -> Mapping[str, str]:
+    def _create_reverse_chars_map(self) -> Mapping[str, List[str]]:
         """
         Create a reverse mapping of homoglyphs to original characters.
 
         Returns:
-            Mapping[str, str]: Reverse mapping of homoglyphs to original characters.
+            Mapping[str, List[str]]: Reverse mapping of homoglyphs to original characters.
         """
-        reverse_map: Mapping[str, str] = {}
+        reverse_map: Mapping[str, List[str]] = {}
         for key, values in self.chars_map.items():
             for value in values:
-                # If there's already a key for this value, don't overwrite it - the first one we find is the highest priority
-                if value not in reverse_map:
-                    reverse_map.setdefault(value, []).append(key)
+                reverse_map.setdefault(value, []).append(key)
 
         return reverse_map
 
@@ -225,7 +245,7 @@ class HomoglyphReplacer:
         return dominant_block
 
     def _is_script_and_block(
-        self, char: str, script: str, block: Optional[str]
+        self, char: str, script: Optional[str], block: Optional[str]
     ) -> bool:
         if not block:
             return unicodedataplus.script(char) == script
@@ -235,7 +255,48 @@ class HomoglyphReplacer:
                 and unicodedataplus.block(char) == block
             )
 
-    def _get_normalization_table_for_script_and_block(
+    def _get_base_normalization_map(
+        self,
+        only_replace_non_normalized: bool = False,
+        **kwargs,
+    ) -> Mapping[int, str]:
+        """
+        Generate a base normalization map.
+
+        Args:
+            only_replace_non_normalized (bool): If True, only replace non-normalized characters.
+
+        Returns:
+            Mapping[int, str]: A normalization map for characters.
+        """
+
+        # Generate the normalization table.
+        # Create a dictionary with the NFKD entries where the value is in the script we want to normalize (i.e. (this_or_other_script, script) pairs)
+        base_normalization_map: Mapping[str, List[str]] = {}
+        for key, values in self.reverse_chars_map.items():
+            for value in values:
+                # Keep the NFKD entries where the value is in the desired script
+                if (
+                    (
+                        # The char we normalize into should be normalized
+                        unicodedata.is_normalized("NFKD", value)
+                    )
+                    and (
+                        # If we activate only_replace_non_normalized, then the char we normalize from should NOT be normalized
+                        not (
+                            unicodedata.is_normalized("NFKD", key)
+                            and only_replace_non_normalized
+                        )
+                    )
+                    and (
+                        unicodedata.category(key) in self.unicode_categories_to_replace
+                    )
+                ):
+                    base_normalization_map.setdefault(key, []).append(value)
+
+        return base_normalization_map
+
+    def _get_normalization_map_for_script_and_block(
         self,
         script: str,
         block: str = None,
@@ -253,8 +314,8 @@ class HomoglyphReplacer:
             Mapping[int, str]: A translation table for normalizing text based on the specified script.
         """
         # Check if it's in our in-memory cache
-        if script in self.normalization_translation_tables:
-            return self.normalization_translation_tables[script]
+        if script in self.normalization_translation_maps:
+            return self.normalization_translation_maps[script]
 
         # Generate the normalization table.
         # Create a dictionary with the NFKD entries where the value is in the script we want to normalize (i.e. (this_or_other_script, script) pairs)
@@ -274,31 +335,116 @@ class HomoglyphReplacer:
                             and only_replace_non_normalized
                         )
                     )
-                    and (unicodedata.category(key) in self.unicode_categories_to_replace)
+                    and (
+                        unicodedata.category(key) in self.unicode_categories_to_replace
+                    )
                     and (
                         # The result we get after normalizing should be in the appropriate script and block
-                        self._is_script_and_block(char=value, script=script, block=block)
+                        self._is_script_and_block(
+                            char=value, script=script, block=block
+                        )
                     )
                 ):
                     script_normalization_map[key] = value
-                
 
-        script_normalization_translation_table: Mapping[int, str] = str.maketrans(
-            script_normalization_map
-        )
+        self.normalization_translation_maps[script] = script_normalization_map
 
-        self.normalization_translation_tables[script] = (
-            script_normalization_translation_table
-        )
+        return script_normalization_map
 
-        return script_normalization_translation_table
+    def _translate(self, text: str, map: Mapping[str, List[str]]) -> str:
+        """
+        Translate the text using the provided mapping.
+
+        Args:
+            text (str): Text to translate.
+            map (Mapping[str, str]): Mapping of characters to their replacements.
+
+        Returns:
+            str: Translated text.
+        """
+        # Create a translation table
+        translation_table = str.maketrans(map)
+        # Translate the text using the translation table
+        return text.translate(translation_table)
+
+    def _translate_with_context(
+        self,
+        text: str,
+        mapping: Mapping[str, List[str]],
+        N: int = 10,
+    ) -> str:
+        """
+        Translate the text using the provided mapping, but also trying to maximize context matches (i.e. casing, etc.). We keep a sliding window and choose the best match for each character that matches most of the properties of the N characters in the window.
+
+        Args:
+            text (str): Text to translate.
+            mapping (Mapping[str, str]): Mapping of characters to their replacements.
+            context (Optional[Mapping[str, str]]): Context for translation.
+
+        Returns:
+            str: Translated text.
+        """
+
+        PROPERTY_FNS = {
+            "script": unicodedataplus.script,
+            "block": unicodedataplus.block,
+            "category": unicodedataplus.category,
+        }
+
+        # Do not use a translation table here - instead, process the text character by character keeping track of all the properties of the characters in the window
+        replaced_text = []
+        for i, char in enumerate(text):
+            # Check if the character is in the mapping
+            if char in mapping:
+                # Now, we have a set of possibilities - the set of homoglyphs for this character
+                possible_chars = [char] + mapping[char]
+                # We need to check the context - we will use a sliding window of size N
+                # Adjust the context window to always have 10 characters, even at the start or end
+                # For char i, we should have i-4 to i + 4
+                # To ensure that we always have 10 characters, allow to go out of bounds (i.e. negative indices)
+                start = max(0, i - N // 2)
+                end = min(len(text), i + N // 2 + 1)
+                context_window = text[start:end]
+                # If the context window is smaller than N, we need to pad it
+                if start == 0:
+                    context_window = text[:N]
+                elif end == len(text):
+                    context_window = text[-N:]
+                else:
+                    pass # Nothing to do - we have a full window
+
+                # Get the properties of the characters in the context window
+                properties = {
+                    prop: [PROPERTY_FNS[prop](c) for c in context_window]
+                    for prop in PROPERTY_FNS
+                }
+                # Now, we need to find the character that matches the most properties of the characters in the context window
+                scores = []  # List to store scores for each possible character
+                for possible_char in possible_chars:
+                    score = sum(
+                        PROPERTY_FNS[prop](possible_char) == value
+                        for prop, values in properties.items()
+                        for value in values
+                    )
+                    scores.append((possible_char, score))
+                # Sort the list by score in descending order and pick the best character
+                best_char, best_score = max(scores, key=lambda x: x[1])
+                # If we found a character that matches the properties, we use it
+                if best_char:
+                    replaced_text.append(best_char)
+                else:
+                    # If we didn't find a character that matches the properties, we keep the original character
+                    replaced_text.append(char)
+            # If the character is not in the mapping, we keep it as is
+            else:
+                replaced_text.append(char)
+
+        return "".join(replaced_text)
 
     def normalize(
         self,
         text: str,
-        strategy: Literal[
-            "dominant_script", "dominant_script_and_block", "tokenization"
-        ] = "dominant_script_and_block",
+        strategy: NormalizationStrategies,
         **kwargs,
     ) -> str:
         """
@@ -315,20 +461,26 @@ class HomoglyphReplacer:
         if not text:
             return text
 
-        if strategy == "dominant_script":
+        if strategy == NormalizationStrategies.DOMINANT_SCRIPT:
             dominant_script = self._detect_dominant_script(text=text)
-            normalization_table = self._get_normalization_table_for_script_and_block(
+            normalization_map = self._get_normalization_map_for_script_and_block(
                 script=dominant_script, **kwargs
             )
-            return text.translate(normalization_table)
-        if strategy == "dominant_script_and_block":
+            return self._translate(text, normalization_map)
+        if strategy == NormalizationStrategies.DOMINANT_SCRIPT_AND_BLOCK:
             dominant_script = self._detect_dominant_script(text=text)
             dominant_block = self._detect_dominant_block(text=text)
-            normalization_table = self._get_normalization_table_for_script_and_block(
+            normalization_map = self._get_normalization_map_for_script_and_block(
                 script=dominant_script, block=dominant_block, **kwargs
             )
-            return text.translate(normalization_table)
-        elif strategy == "tokenization":
+            return self._translate(text, normalization_map)
+        elif strategy == NormalizationStrategies.CONTEXT_AWARE:
+            return self._translate_with_context(
+                text=text,
+                mapping=self.base_normalization_map,
+                N=kwargs.get("N", 10),
+            )
+        elif strategy == NormalizationStrategies.TOKENIZATION:
             raise NotImplementedError()
         else:
             raise NotImplementedError(f"Strategy {strategy} is unknown.")

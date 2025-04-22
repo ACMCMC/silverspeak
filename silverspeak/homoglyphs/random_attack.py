@@ -8,7 +8,7 @@ from silverspeak.homoglyphs.homoglyph_replacer import HomoglyphReplacer
 from silverspeak.homoglyphs.utils import (
     _DEFAULT_HOMOGLYPHS_TO_USE,
     _DEFAULT_UNICODE_CATEGORIES_TO_REPLACE,
-    TYPES_OF_HOMOGLYPHS,
+    TypesOfHomoglyphs,
 )
 
 logger = logging.getLogger(__name__)
@@ -19,7 +19,7 @@ def random_attack(
     percentage=0.1,
     random_seed=42,
     unicode_categories_to_replace=_DEFAULT_UNICODE_CATEGORIES_TO_REPLACE,
-    types_of_homoglyphs_to_use: List[TYPES_OF_HOMOGLYPHS] = _DEFAULT_HOMOGLYPHS_TO_USE,
+    types_of_homoglyphs_to_use: List[TypesOfHomoglyphs] = _DEFAULT_HOMOGLYPHS_TO_USE,
     replace_with_priority: bool = False,
 ) -> str:
     """

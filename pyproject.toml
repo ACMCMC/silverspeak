@@ -20,6 +20,7 @@ unicodedataplus = "^16.0.0.post1"
 
 [tool.poetry.group.dev.dependencies]
 ipykernel = "^6.29.5"
+pytest = "^8.3.5"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
