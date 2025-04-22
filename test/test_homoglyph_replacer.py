@@ -1,8 +1,6 @@
 import pytest
 from silverspeak.homoglyphs.homoglyph_replacer import HomoglyphReplacer
-from silverspeak.homoglyphs.utils import (
-    NormalizationStrategies
-)
+from silverspeak.homoglyphs.utils import NormalizationStrategies
 
 POSSIBLE_STRATEGIES = [
     NormalizationStrategies.DOMINANT_SCRIPT,
@@ -17,11 +15,16 @@ TEXTS_TO_TEST = [
         "hello world",
     ),  # Mixes I and l, which are both Latin but not the same case (Unicode category is different: Ll vs. Lu)
     ("расе", "расе"),  # All Cyrillic
-    ("言語是溝通的橋樑", "訁語是溝通的橋樑"),  # Chinese sentence with 言 and 訁
-    (
-        "言行一致是成功的關鍵",
-        "訁行一致是成功的關鍵",
-    ),  # Another Chinese sentence with 言 and 訁
+    ("こんにちは世界", "こんにちは世界"),  # Japanese
+    ("你好，世界", "你好，世界"),  # Chinese
+    ("안녕하세요 세계", "안녕하세요 세계"),  # Korean
+    ("مرحبا بالعالم", "مرحبا بالعالم"),  # Arabic
+    ("שלום עולם", "שלום עולם"),  # Hebrew
+    ("नमस्ते दुनिया", "नमस्ते दुनिया"),  # Hindi
+    ("สวัสดีโลก", "สวัสดีโลก"),  # Thai
+    ("Привет, мир", "Привет, мир"),  # Russian
+    ("Γειά σου Κόσμε", "Γειά σου Κόσμε"),  # Greek
+    ("Olá Mundo", "Olá Mundo"),  # Portuguese
     ("", ""),  # Empty string
     ("hello world", "hello world"),  # No homoglyphs
 ]

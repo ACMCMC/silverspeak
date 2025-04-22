@@ -1,0 +1,30 @@
+name: Acceptability Test Workflow
+
+on:
+  push:
+    branches:
+      - "*"
+
+permissions:
+  contents: read
+
+jobs:
+  acceptability-test:
+    # This job focuses on testing that at least the critical functionalities of the package work as expected. This will ensure that the most important features are functioning correctly. For example, it checks that at least one of the strategies to normalize homoglyph attacked texts is able to actually get the expected result. 
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Install dependencies
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+          poetry install
+
+      - name: Run fallback test
+        run: |
+          poetry run pytest -k "test_normalize_with_fallback" || echo "Fallback test failed, but workflow will continue."

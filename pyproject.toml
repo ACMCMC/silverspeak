@@ -14,13 +14,14 @@ keywords = [
 ]
 
 [tool.poetry.dependencies]
-python = "^3.9"
+python = ">=3.11,<4.0"
 pandas = "^2.2.2"
 unicodedataplus = "^16.0.0.post1"
 
 [tool.poetry.group.dev.dependencies]
 ipykernel = "^6.29.5"
 pytest = "^8.3.5"
+sphinx = "^8.2.3"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]

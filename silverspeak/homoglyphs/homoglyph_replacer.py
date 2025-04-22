@@ -389,6 +389,11 @@ class HomoglyphReplacer:
             "script": unicodedataplus.script,
             "block": unicodedataplus.block,
             "category": unicodedataplus.category,
+            "vertical_orientation": unicodedataplus.vertical_orientation,
+            "bidirectional": unicodedata.bidirectional,
+            "combining": unicodedata.combining,
+            "east_asian_width": unicodedata.east_asian_width,
+            "mirrored": unicodedata.mirrored,
         }
 
         # Do not use a translation table here - instead, process the text character by character keeping track of all the properties of the characters in the window
@@ -429,6 +434,11 @@ class HomoglyphReplacer:
                     scores.append((possible_char, score))
                 # Sort the list by score in descending order and pick the best character
                 best_char, best_score = max(scores, key=lambda x: x[1])
+                # If there's a tie in different characters, log a warning
+                if len([s for s in scores if s[1] == best_score]) > 1:
+                    logging.warning(
+                        f"Found a tie for the best character for '{char}' (at index {i}) in context '{context_window}': {scores}. Using the first one."
+                    )
                 # If we found a character that matches the properties, we use it
                 if best_char:
                     replaced_text.append(best_char)

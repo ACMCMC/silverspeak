@@ -1,0 +1,30 @@
+name: Full Test Workflow
+
+on:
+  push:
+    branches:
+      - "*"
+
+permissions:
+  contents: read
+
+jobs:
+  full-test:
+    # This job runs the complete test suite to ensure all parts of the code are working properly. This will not actually happen because there are many complications to, for example, normalizing homoglyph attacks. So it's impossible that simple fixes would be able to pass in all test cases. 
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+
+      - name: Install dependencies
+        run: |
+          curl -sSL https://install.python-poetry.org | python3 -
+          poetry install
+
+      - name: Run all tests
+        run: |
+          poetry run pytest
