@@ -6,6 +6,7 @@ POSSIBLE_STRATEGIES = [
     NormalizationStrategies.DOMINANT_SCRIPT,
     NormalizationStrategies.DOMINANT_SCRIPT_AND_BLOCK,
     NormalizationStrategies.CONTEXT_AWARE,
+    NormalizationStrategies.TOKENIZATION,
 ]
 
 TEXTS_TO_TEST = [

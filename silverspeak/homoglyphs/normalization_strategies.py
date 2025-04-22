@@ -3,6 +3,7 @@ from typing import List, Mapping
 import unicodedata
 import unicodedataplus
 import logging
+import tqdm
 
 
 def detect_dominant_script(text: str) -> str:
@@ -180,36 +181,7 @@ def apply_context_aware_strategy(normalization_map, text, **kwargs):
     return translate_with_context(text, normalization_map)
 
 
-def _generate_homoglyph_replacements(token: str) -> list:
-    """
-    Generate possible homoglyph replacements for a given token.
-
-    Args:
-        token (str): The input token for which homoglyph replacements are to be generated.
-
-    Returns:
-        list: A list of possible homoglyph replacements for the input token.
-    """
-    from search_homolgyphs.unicode_confusables_map import UNICODE_CONFUSABLES_MAP
-
-    # Initialize a list to store possible replacements
-    replacements = []
-
-    # Iterate over each character in the token
-    for char in token:
-        # Check if the character has homoglyphs in the confusables map
-        if char in UNICODE_CONFUSABLES_MAP:
-            # Replace the character with each of its homoglyphs
-            for homoglyph in UNICODE_CONFUSABLES_MAP[char]:
-                # Generate a new token with the homoglyph replacement
-                new_token = token.replace(char, homoglyph)
-                replacements.append(new_token)
-
-    # Return the list of possible replacements
-    return replacements
-
-
-def apply_tokenizer_strategy(text: str, **kwargs):
+def apply_tokenizer_strategy(text: str, mapping: Mapping[str, List[str]], **kwargs):
     """
     Normalize text using a tokenizer strategy.
 
@@ -219,29 +191,174 @@ def apply_tokenizer_strategy(text: str, **kwargs):
     Returns:
         str: Normalized text.
     """
-    from transformers import AutoTokenizer
+    from transformers import AutoTokenizer, PreTrainedTokenizer
 
-    # Load the GPT-2 tokenizer
-    tokenizer = AutoTokenizer.from_pretrained("gpt2")
+    # Load a tokenizer that supports a lot of languages
+    tokenizer: PreTrainedTokenizer = AutoTokenizer.from_pretrained(
+        # "MaLA-LM/mala-500-10b-v1"
+        # "bigscience/bloom"
+        "google/gemma-3-1b-it"
+    )
 
-    # Tokenize the input text
-    tokens = tokenizer.tokenize(text)
+    vocab = tokenizer.get_vocab().keys()
 
-    # Initialize the normalized text
+    # Order the vocabulary by length
+    vocab = sorted(vocab, key=len, reverse=True)
+
+    # For all of the tokens starting with the space prefix, remove the prefix
+    # i.e. if the token is "_hello", we want to keep only "hello"
+
+    vocab = [token[1:] if token.startswith("▁") else token for token in vocab]
+
     normalized_text = []
 
-    for token in tokens:
-        # Generate possible homoglyph replacements for the token
-        possible_replacements = _generate_homoglyph_replacements(token)
+    # To select the correct characters, analyze each at a time
+    for i, char in tqdm.tqdm(enumerate(text), desc="Normalizing text", total=len(text)):
+        # Check if the character is in the mapping
+        if char in mapping:
+            # We have a set of possibilities - the set of homoglyphs for this character
+            possible_chars = [char] + mapping[char]
 
-        # Find the replacement that produces the best match in the tokenizer's vocabulary
-        best_match = max(
-            possible_replacements,
-            key=lambda replacement: tokenizer.vocab.get(replacement, -1),
-        )
+            # Filter the vocabulary to only include tokens that contain the possible character
+            possible_token_starts = {
+                char: [
+                    # Store only up to the place where the character is in the token (highest index)
+                    # i.e. if the character is in the middle of the token, we want to keep only the left side
+                    (
+                        token[: token.rindex(char)],
+                        len(token),
+                        token,  # For debugging purposes, keep the original token
+                    )  # Keep the original token because it'll be useful later
+                    for token in vocab
+                    if char in token
+                ]
+                for char in possible_chars
+            }
 
-        # Append the best match to the normalized text
-        normalized_text.append(best_match)
+            # Now, we want to find the biggest possible token that can be formed with the homoglyphs
+            # i.e. the biggest token that is in the vocabulary
+            # Go over all of the possible tokens and discard all of the ones that could not be formed with the text we have
+            possible_token_starts = {
+                char: [
+                    token_tuple
+                    for token_tuple in tokens
+                    # Is the start of the token in the text?
+                    if text.startswith(token_tuple[0], i - len(token_tuple[0]), i)
+                ]
+                for char, tokens in possible_token_starts.items()
+            }
+
+            # Remove all candidates that don't have a single token
+            possible_token_starts = {
+                char: v for char, v in possible_token_starts.items() if len(v) > 0
+            }
+
+            if not possible_token_starts:
+                # If there are no possible tokens, we keep the original character
+                logging.warning(
+                    f"No possible tokens found for character '{char}' (at index {i}) in context '{text}'. Keeping the original character."
+                )
+                normalized_text.append(char)
+                continue
+            elif len(possible_token_starts) == 1:
+                # If there's only one possible token, we just take it
+                normalized_text.append(next(iter(possible_token_starts.keys())))
+                continue
+
+            # Now that we have all possible tokens, we want to find the one that matches our success criteria:
+            # The best char is the one that:
+            # 1. Has the longest start
+            # 2. Has the longest token
+            # 3. Among those possible characters, we want the one that has the largest number of possible tokens
+            # 4. If there's a tie, we want to keep the default best char which is the one that had the largest list of possible starts
+
+            # 1. Has the longest start
+            max_possible_token_start_length = max(
+                max(len(token[0]) for token in tokens)
+                for tokens in possible_token_starts.values()
+            )
+
+            # Discard all of the possible tokens that are not the longest
+            possible_max_len_token_starts = {}
+            for char, tokens in possible_token_starts.items():
+                for token in tokens:
+                    if len(token[0]) == max_possible_token_start_length:
+                        possible_max_len_token_starts.setdefault(char, []).append(token)
+                    # We can't break here because we need to check all of the tokens - they are sorted by length of the full token, not the length of the start
+            # If there's only one candidate, we just take it
+            if len(possible_max_len_token_starts) == 1:
+                normalized_text.append(next(iter(possible_max_len_token_starts.keys())))
+                continue
+
+            # 2. Has the longest token
+            # What are the chars with the max length? Since the lists are sorted, we can just take the length of the first one
+            max_possible_token_length = max(
+                # The length (1) of the first token in the list of possible tokens (0)
+                v[0][1]
+                for v in possible_max_len_token_starts.values()
+            )
+
+            # Discard all of the possible tokens that are not the longest
+            for char, tokens in possible_max_len_token_starts.items():
+                for token_index, token in enumerate(tokens):
+                    if token[1] == max_possible_token_length:
+                        # Don't do anything - we want to keep this token
+                        pass
+                    else:
+                        # If the token is not the longest, we discard it and all after itself
+                        possible_max_len_token_starts[char] = possible_max_len_token_starts[char][
+                            : token_index
+                        ]
+                        # since the lists are sorted by full token length, we can just break
+                        break
+
+            # Discard any possible characters that have no possible tokens
+            possible_max_len_token_starts = {
+                char: v
+                for char, v in possible_max_len_token_starts.items()
+                if len(v) > 0
+            }
+
+            # If there's only one candidate, we just take it
+            if len(possible_max_len_token_starts) == 1:
+                normalized_text.append(next(iter(possible_max_len_token_starts.keys())))
+                continue
+
+            # 3. Among those possible characters, we want the one that has the largest number of possible tokens
+
+            # Now, we have a list of possible tokens that are the longest
+            # We want to find the one that has the largest number of possible tokens
+            # i.e. the one that has the largest number of possible tokens
+            # We can do this by just taking the length of the list of the tokens of the possible token starts
+            max_number_of_possible_tokens = max(
+                len(v) for v in possible_max_len_token_starts.values()
+            )
+            # Now, we want to find the one that has the largest number of possible tokens
+            possible_max_len_token_starts = {
+                k: v
+                for k, v in possible_max_len_token_starts.items()
+                if len(v) == max_number_of_possible_tokens
+            }
+            if len(possible_max_len_token_starts) == 1:
+                normalized_text.append(next(iter(possible_max_len_token_starts.keys())))
+                continue
+
+            # 4. If there's a tie, we want to keep the default best char which is the one that had the largest list of possible starts
+            logging.warning(
+                f"Found multiple candidates for the best character for '{char}' (at index {i}) in context '{text}': {possible_max_len_token_starts}. Using the one with the longest token."
+            )
+            normalized_text.append(
+                max(
+                    possible_max_len_token_starts.keys(),
+                    # Use the length of the first token in the list of all possible tokens (possible_token_starts), not just the list of the longest tokens
+                    key=lambda x: len(possible_token_starts[x][0]),
+                )
+            )
+            continue
+
+        else:
+            # If the character is not in the mapping, we keep it as is
+            normalized_text.append(char)
 
     # Join the normalized tokens back into a single string
     return "".join(normalized_text)

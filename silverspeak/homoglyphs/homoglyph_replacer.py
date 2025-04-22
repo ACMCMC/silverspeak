@@ -19,6 +19,7 @@ from .normalization_strategies import (
     apply_dominant_script_strategy,
     apply_dominant_script_and_block_strategy,
     apply_context_aware_strategy,
+    apply_tokenizer_strategy,
 )
 
 
@@ -388,6 +389,13 @@ class HomoglyphReplacer:
                 normalization_map=self.base_normalization_map, text=text, **kwargs
             )
         elif strategy == NormalizationStrategies.TOKENIZATION:
-            raise NotImplementedError()
+            return apply_tokenizer_strategy(
+                text=text,
+                mapping=self.base_normalization_map,
+            )
+        elif strategy == NormalizationStrategies.LANGUAGE_MODEL:
+            raise NotImplementedError(
+                "Language model normalization strategy is not implemented yet."
+            )
         else:
             raise NotImplementedError(f"Strategy {strategy} is unknown.")

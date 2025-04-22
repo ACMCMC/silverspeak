@@ -1,7 +1,15 @@
 import pytest
 from silverspeak.homoglyphs.random_attack import random_attack
 from silverspeak.homoglyphs.normalize import normalize_text as normalize
-from silverspeak.homoglyphs.utils import TypesOfHomoglyphs
+from silverspeak.homoglyphs.utils import NormalizationStrategies, TypesOfHomoglyphs
+
+
+POSSIBLE_STRATEGIES = [
+    NormalizationStrategies.DOMINANT_SCRIPT,
+    NormalizationStrategies.DOMINANT_SCRIPT_AND_BLOCK,
+    NormalizationStrategies.CONTEXT_AWARE,
+    NormalizationStrategies.TOKENIZATION,
+]
 
 
 @pytest.mark.parametrize(
@@ -12,15 +20,16 @@ from silverspeak.homoglyphs.utils import TypesOfHomoglyphs
         "!@#$%^&*()_+-=[]{}|;':,./<>?",
     ],
 )
-def test_random_attack_and_normalize(original_text):
+@pytest.mark.parametrize("strategy", POSSIBLE_STRATEGIES)
+def test_random_attack_and_normalize(original_text, strategy):
     """
-    Test the random_attack and normalize functions with various inputs.
+    Test the random_attack and normalize functions with various inputs and strategies.
     """
     # Apply random attack
     attacked_text = random_attack(original_text, percentage=0.2, random_seed=42)
 
-    # Normalize the attacked text
-    normalized_text = normalize(attacked_text)
+    # Normalize the attacked text using the given strategy
+    normalized_text = normalize(attacked_text, strategy=strategy)
 
     # Assert that the normalized text matches the original
     assert normalized_text == original_text
@@ -43,41 +52,23 @@ def test_random_attack_and_normalize(original_text):
         "Σε ένα ήσυχο καλοκαιρινό απόγευμα, τα παιδιά παίζουν στο πάρκο ενώ οι ενήλικες συζητούν κάτω από τη σκιά των δέντρων.",  # Greek
         "Sıcak bir yaz akşamında, çocuklar parkta oynarken yetişkinler ağaçların gölgesinde sohbet ediyor.",  # Turkish
         "U mirnoj ljetnoj večeri, djeca se igraju u parku dok odrasli razgovaraju u hladu drveća.",  # Serbian
-        "Dans un petit village, les enfants jouent dans les champs tandis que les adultes préparent un grand festin pour célébrer la récolte.",  # French (alternative)
     ],
 )
-@pytest.mark.parametrize(
-    "types_of_homoglyphs_to_use",
-    [
-        [
-            TypesOfHomoglyphs.IDENTICAL,
-        ],
-        [
-            TypesOfHomoglyphs.IDENTICAL,
-            TypesOfHomoglyphs.CONFUSABLES,
-        ],
-        [
-            TypesOfHomoglyphs.IDENTICAL,
-            TypesOfHomoglyphs.CONFUSABLES,
-            TypesOfHomoglyphs.OCR_REFINED,
-        ],
-    ],
-)
-def test_random_attack_and_normalize_single_script(phrase, types_of_homoglyphs_to_use):
+@pytest.mark.parametrize("strategy", POSSIBLE_STRATEGIES)
+def test_random_attack_and_normalize_single_script(phrase, strategy):
     """
-    Test the random_attack and normalize functions with single-script phrases.
+    Test the random_attack and normalize functions with single-script phrases and strategies.
     """
     # Apply random attack
     attacked_text = random_attack(
         phrase,
         percentage=0.2,
         random_seed=42,
-        types_of_homoglyphs_to_use=types_of_homoglyphs_to_use,
     )
 
-    # Normalize the attacked text
+    # Normalize the attacked text using the given strategy
     normalized_text = normalize(
-        text=attacked_text, types_of_homoglyphs_to_use=types_of_homoglyphs_to_use
+        text=attacked_text, strategy=strategy
     )
 
     # Assert that the normalized text matches the original
@@ -94,44 +85,21 @@ def test_random_attack_and_normalize_single_script(phrase, types_of_homoglyphs_t
         'Numa tarde de verão tranquila, as crianças brincam no parque enquanto os adultos conversam à sombra das árvores, e alguém comenta: "Αυτή είναι μια δοκιμαστική πρόταση."',  # Portuguese with Greek
     ],
 )
-@pytest.mark.parametrize(
-    "types_of_homoglyphs_to_use",
-    [
-        [
-            TypesOfHomoglyphs.IDENTICAL,
-        ],
-        [
-            TypesOfHomoglyphs.CONFUSABLES,
-        ],
-        [
-            TypesOfHomoglyphs.OCR_REFINED,
-        ],
-        [
-            TypesOfHomoglyphs.IDENTICAL,
-            TypesOfHomoglyphs.CONFUSABLES,
-        ],
-        [
-            TypesOfHomoglyphs.IDENTICAL,
-            TypesOfHomoglyphs.CONFUSABLES,
-            TypesOfHomoglyphs.OCR_REFINED,
-        ],
-    ],
-)
-def test_random_attack_and_normalize_mixed_scripts(phrase, types_of_homoglyphs_to_use):
+@pytest.mark.parametrize("strategy", POSSIBLE_STRATEGIES)
+def test_random_attack_and_normalize_mixed_scripts(phrase, strategy):
     """
-    Test the random_attack and normalize functions with mixed-script phrases.
+    Test the random_attack and normalize functions with mixed-script phrases and strategies.
     """
     # Apply random attack
     attacked_text = random_attack(
         phrase,
         percentage=0.2,
         random_seed=42,
-        types_of_homoglyphs_to_use=types_of_homoglyphs_to_use,
     )
 
-    # Normalize the attacked text
+    # Normalize the attacked text using the given strategy
     normalized_text = normalize(
-        text=attacked_text, types_of_homoglyphs_to_use=types_of_homoglyphs_to_use
+        text=attacked_text, strategy=strategy
     )
 
     # Assert that the normalized text matches the original

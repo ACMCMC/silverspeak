@@ -19,3 +19,4 @@ class NormalizationStrategies(Enum):
     DOMINANT_SCRIPT_AND_BLOCK = "dominant_script_and_block"
     CONTEXT_AWARE = "context_aware"
     TOKENIZATION = "tokenization"
+    LANGUAGE_MODEL = "language_model"
