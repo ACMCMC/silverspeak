@@ -15,6 +15,12 @@ from silverspeak.homoglyphs.utils import (
     TypesOfHomoglyphs,
 )
 
+from .normalization_strategies import (
+    apply_dominant_script_strategy,
+    apply_dominant_script_and_block_strategy,
+    apply_context_aware_strategy,
+)
+
 
 class HomoglyphReplacer:
     """
@@ -296,7 +302,7 @@ class HomoglyphReplacer:
 
         return base_normalization_map
 
-    def _get_normalization_map_for_script_and_block(
+    def get_normalization_map_for_script_and_block(
         self,
         script: str,
         block: str = None,
@@ -351,106 +357,6 @@ class HomoglyphReplacer:
 
         return script_normalization_map
 
-    def _translate(self, text: str, map: Mapping[str, List[str]]) -> str:
-        """
-        Translate the text using the provided mapping.
-
-        Args:
-            text (str): Text to translate.
-            map (Mapping[str, str]): Mapping of characters to their replacements.
-
-        Returns:
-            str: Translated text.
-        """
-        # Create a translation table
-        translation_table = str.maketrans(map)
-        # Translate the text using the translation table
-        return text.translate(translation_table)
-
-    def _translate_with_context(
-        self,
-        text: str,
-        mapping: Mapping[str, List[str]],
-        N: int = 10,
-    ) -> str:
-        """
-        Translate the text using the provided mapping, but also trying to maximize context matches (i.e. casing, etc.). We keep a sliding window and choose the best match for each character that matches most of the properties of the N characters in the window.
-
-        Args:
-            text (str): Text to translate.
-            mapping (Mapping[str, str]): Mapping of characters to their replacements.
-            context (Optional[Mapping[str, str]]): Context for translation.
-
-        Returns:
-            str: Translated text.
-        """
-
-        PROPERTY_FNS = {
-            "script": unicodedataplus.script,
-            "block": unicodedataplus.block,
-            "category": unicodedataplus.category,
-            "vertical_orientation": unicodedataplus.vertical_orientation,
-            "bidirectional": unicodedata.bidirectional,
-            "combining": unicodedata.combining,
-            "east_asian_width": unicodedata.east_asian_width,
-            "mirrored": unicodedata.mirrored,
-        }
-
-        # Do not use a translation table here - instead, process the text character by character keeping track of all the properties of the characters in the window
-        replaced_text = []
-        for i, char in enumerate(text):
-            # Check if the character is in the mapping
-            if char in mapping:
-                # Now, we have a set of possibilities - the set of homoglyphs for this character
-                possible_chars = [char] + mapping[char]
-                # We need to check the context - we will use a sliding window of size N
-                # Adjust the context window to always have 10 characters, even at the start or end
-                # For char i, we should have i-4 to i + 4
-                # To ensure that we always have 10 characters, allow to go out of bounds (i.e. negative indices)
-                start = max(0, i - N // 2)
-                end = min(len(text), i + N // 2 + 1)
-                context_window = text[start:end]
-                # If the context window is smaller than N, we need to pad it
-                if start == 0:
-                    context_window = text[:N]
-                elif end == len(text):
-                    context_window = text[-N:]
-                else:
-                    pass # Nothing to do - we have a full window
-
-                # Get the properties of the characters in the context window
-                properties = {
-                    prop: [PROPERTY_FNS[prop](c) for c in context_window]
-                    for prop in PROPERTY_FNS
-                }
-                # Now, we need to find the character that matches the most properties of the characters in the context window
-                scores = []  # List to store scores for each possible character
-                for possible_char in possible_chars:
-                    score = sum(
-                        PROPERTY_FNS[prop](possible_char) == value
-                        for prop, values in properties.items()
-                        for value in values
-                    )
-                    scores.append((possible_char, score))
-                # Sort the list by score in descending order and pick the best character
-                best_char, best_score = max(scores, key=lambda x: x[1])
-                # If there's a tie in different characters, log a warning
-                if len([s for s in scores if s[1] == best_score]) > 1:
-                    logging.warning(
-                        f"Found a tie for the best character for '{char}' (at index {i}) in context '{context_window}': {scores}. Using the first one."
-                    )
-                # If we found a character that matches the properties, we use it
-                if best_char:
-                    replaced_text.append(best_char)
-                else:
-                    # If we didn't find a character that matches the properties, we keep the original character
-                    replaced_text.append(char)
-            # If the character is not in the mapping, we keep it as is
-            else:
-                replaced_text.append(char)
-
-        return "".join(replaced_text)
-
     def normalize(
         self,
         text: str,
@@ -472,23 +378,14 @@ class HomoglyphReplacer:
             return text
 
         if strategy == NormalizationStrategies.DOMINANT_SCRIPT:
-            dominant_script = self._detect_dominant_script(text=text)
-            normalization_map = self._get_normalization_map_for_script_and_block(
-                script=dominant_script, **kwargs
+            return apply_dominant_script_strategy(replacer=self, text=text, **kwargs)
+        elif strategy == NormalizationStrategies.DOMINANT_SCRIPT_AND_BLOCK:
+            return apply_dominant_script_and_block_strategy(
+                replacer=self, text=text, **kwargs
             )
-            return self._translate(text, normalization_map)
-        if strategy == NormalizationStrategies.DOMINANT_SCRIPT_AND_BLOCK:
-            dominant_script = self._detect_dominant_script(text=text)
-            dominant_block = self._detect_dominant_block(text=text)
-            normalization_map = self._get_normalization_map_for_script_and_block(
-                script=dominant_script, block=dominant_block, **kwargs
-            )
-            return self._translate(text, normalization_map)
         elif strategy == NormalizationStrategies.CONTEXT_AWARE:
-            return self._translate_with_context(
-                text=text,
-                mapping=self.base_normalization_map,
-                N=kwargs.get("N", 10),
+            return apply_context_aware_strategy(
+                normalization_map=self.base_normalization_map, text=text, **kwargs
             )
         elif strategy == NormalizationStrategies.TOKENIZATION:
             raise NotImplementedError()
