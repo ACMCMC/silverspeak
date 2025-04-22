@@ -1,14 +1,35 @@
 Usage
 =====
 
-SilverSpeak provides tools for homoglyph-based text manipulation and analysis. Below is an example of how to use the library:
+SilverSpeak is a Python library designed to manipulate text using homoglyphs for security and adversarial purposes. Below are examples of its usage:
 
-.. code-block:: python
+1. **Performing a Greedy Attack**:
 
-   from silverspeak.homoglyphs import greedy_attack
+   .. code-block:: python
 
-   text = "example text"
-   attacked_text = greedy_attack.perform_attack(text)
-   print(attacked_text)
+      from silverspeak.homoglyphs import greedy_attack
 
-Refer to the API reference for detailed usage of each module.
+      text = "example text"
+      attacked_text = greedy_attack.perform_attack(text)
+      print(attacked_text)
+
+2. **Normalizing Text**:
+
+   .. code-block:: python
+
+      from silverspeak.homoglyphs import normalize_text
+
+      normalized_text = normalize_text("exаmple")  # Note: homoglyph 'а' (Cyrillic)
+      print(normalized_text)
+
+3. **Replacing Homoglyphs**:
+
+   .. code-block:: python
+
+      from silverspeak.homoglyphs import HomoglyphReplacer
+
+      replacer = HomoglyphReplacer()
+      replaced_text = replacer.replace("example")
+      print(replaced_text)
+
+Refer to the API reference for detailed documentation of each module.

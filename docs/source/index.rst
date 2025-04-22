@@ -13,6 +13,7 @@ Welcome to SilverSpeak's documentation!
    installation
    usage
    api_reference
+   challenges
 
 Indices and tables
 ==================

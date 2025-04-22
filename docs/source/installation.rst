@@ -1,10 +1,26 @@
 Installation
 ============
 
-To install SilverSpeak, use the following command:
+To install SilverSpeak, follow these steps:
 
-.. code-block:: bash
+1. Ensure you have Python 3.11 or higher installed on your system.
+2. Install Poetry, a dependency management tool, by running:
 
-   pip install silverspeak
+   .. code-block:: bash
 
-Ensure that your Python version is compatible with the requirements specified in the `pyproject.toml` file.
+      pip install poetry
+
+3. Clone the SilverSpeak repository from GitHub:
+
+   .. code-block:: bash
+
+      git clone https://github.com/ACMCMC/silverspeak.git
+      cd silverspeak
+
+4. Install the project dependencies using Poetry:
+
+   .. code-block:: bash
+
+      poetry install
+
+SilverSpeak is now ready for use.
