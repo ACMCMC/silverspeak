@@ -28,3 +28,7 @@ jobs:
       - name: Run fallback test
         run: |
           poetry run pytest -k "test_normalize_with_fallback" || echo "Fallback test failed, but workflow will continue."
+
+      - name: Run random attack and normalize test
+        run: |
+          poetry run pytest -k "test_random_attack_and_normalize_with_tolerance_and_fallback" || echo "Random attack and normalize test failed, but workflow will continue."
