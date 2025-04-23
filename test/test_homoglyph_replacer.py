@@ -5,8 +5,9 @@ from silverspeak.homoglyphs.utils import NormalizationStrategies
 POSSIBLE_STRATEGIES = [
     NormalizationStrategies.DOMINANT_SCRIPT,
     NormalizationStrategies.DOMINANT_SCRIPT_AND_BLOCK,
-    NormalizationStrategies.CONTEXT_AWARE,
+    NormalizationStrategies.LOCAL_CONTEXT,
     NormalizationStrategies.TOKENIZATION,
+    NormalizationStrategies.LANGUAGE_MODEL,
 ]
 
 TEXTS_TO_TEST = [
@@ -26,8 +27,8 @@ TEXTS_TO_TEST = [
     ("Привет, мир", "Привет, мир"),  # Russian
     ("Γειά σου Κόσμε", "Γειά σου Κόσμε"),  # Greek
     ("Olá Mundo", "Olá Mundo"),  # Portuguese
-    ("", ""),  # Empty string
     ("hello world", "hello world"),  # No homoglyphs
+    ("", ""),  # Empty string
 ]
 
 

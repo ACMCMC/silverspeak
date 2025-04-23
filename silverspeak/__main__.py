@@ -1,12 +1,17 @@
+# %%
 import logging
 import random
 
 from silverspeak.homoglyphs.random_attack import random_attack
+from silverspeak.homoglyphs.utils import TypesOfHomoglyphs
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 random.seed(42)
+
+original_text = """What are the standards required of offered properties? Properties need to be habitable and must meet certain health and safety standards, which the local authority can discuss with you. These standards have been agreed by the Department of Housing, Local Government and Heritage. The local authority will assess your property to make sure it meets the standards. If the property does not meet the standards, the local authority will explain why and can discuss what could be done to bring the property up to standard. Some properties may not be suitable for all those in need of accommodation, due to location or other reasons. However, every effort will be made by the local authority to ensure that offered properties are matched to appropriate beneficiaries."""
+original_text = """What standards are required for offered properties? Properties must be habitable and meet certain health and safety standards, which can be discussed with the local authority. These standards have been agreed upon by the Department of Housing, Local Government and Heritage. The local authority will assess your property to ensure it meets the standards. If the property does not meet the required standards, the local authority will provide an explanation and discuss potential solutions to bring the property up to standard. Some properties may not be suitable for all individuals seeking accommodation due to location or other factors. However, the local authority will make every effort to match offered properties with appropriate beneficiaries."""
 original_text = """The following is a transcript from The Guardian's interview with the British ambassador to the UN, John Baird.
 
 Baird: The situation in Syria is very dire. We have a number of reports of chemical weapons being used in the country. The Syrian opposition has expressed their willingness to use chemical weapons. We have a number of people who have been killed, many of them civilians. I think it is important to understand this.
@@ -27,10 +32,21 @@ Baird: I think it is important for us to understand that the use of chemical wea
 
 We have to understand that the use of chemical weapons is very dangerous."""
 
-original_text = """What are the standards required of offered properties? Properties need to be habitable and must meet certain health and safety standards, which the local authority can discuss with you. These standards have been agreed by the Department of Housing, Local Government and Heritage. The local authority will assess your property to make sure it meets the standards. If the property does not meet the standards, the local authority will explain why and can discuss what could be done to bring the property up to standard. Some properties may not be suitable for all those in need of accommodation, due to location or other reasons. However, every effort will be made by the local authority to ensure that offered properties are matched to appropriate beneficiaries."""
-original_text = """What standards are required for offered properties? Properties must be habitable and meet certain health and safety standards, which can be discussed with the local authority. These standards have been agreed upon by the Department of Housing, Local Government and Heritage. The local authority will assess your property to ensure it meets the standards. If the property does not meet the required standards, the local authority will provide an explanation and discuss potential solutions to bring the property up to standard. Some properties may not be suitable for all individuals seeking accommodation due to location or other factors. However, the local authority will make every effort to match offered properties with appropriate beneficiaries."""
-
-rewritten_text = random_attack(original_text, percentage=0.15)
-logger.info("\n========================\n")
+rewritten_text = random_attack(
+    original_text,
+    percentage=0.05,
+    random_seed=42,
+    same_script=True,
+    # same_block=True,
+    types_of_homoglyphs_to_use=[
+        TypesOfHomoglyphs.IDENTICAL,
+        TypesOfHomoglyphs.CONFUSABLES,
+        # TypesOfHomoglyphs.OCR_REFINED,
+    ],
+)
+logger.info("\n========================\n\n")
 logger.info(rewritten_text)
-logger.info("\n========================\n")
+logger.info("\n\n========================\n")
+
+logger.info("Random attack completed with specified parameters.")
+# %%

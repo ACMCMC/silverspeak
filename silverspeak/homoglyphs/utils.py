@@ -17,6 +17,6 @@ _DEFAULT_HOMOGLYPHS_TO_USE = [
 class NormalizationStrategies(Enum):
     DOMINANT_SCRIPT = "dominant_script"
     DOMINANT_SCRIPT_AND_BLOCK = "dominant_script_and_block"
-    CONTEXT_AWARE = "context_aware"
+    LOCAL_CONTEXT = "local_context"
     TOKENIZATION = "tokenization"
     LANGUAGE_MODEL = "language_model"

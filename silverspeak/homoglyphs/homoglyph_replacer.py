@@ -18,8 +18,18 @@ from silverspeak.homoglyphs.utils import (
 from .normalization_strategies import (
     apply_dominant_script_strategy,
     apply_dominant_script_and_block_strategy,
-    apply_context_aware_strategy,
+    apply_local_context_strategy,
     apply_tokenizer_strategy,
+    apply_language_model_strategy,
+)
+
+from .script_block_category_utils import (
+    get_script_counts,
+    detect_dominant_script,
+    get_block_counts,
+    detect_dominant_block,
+    is_script_and_block,
+    is_category,
 )
 
 
@@ -57,7 +67,6 @@ class HomoglyphReplacer:
             replace_with_priority (bool): Whether to replace with priority.
             random_seed (int): Seed for random number generator.
         """
-        self.unicode_categories_to_replace = unicode_categories_to_replace
         self.types_of_homoglyphs_to_use = types_of_homoglyphs_to_use
         self.replace_with_priority = replace_with_priority
         self.chars_map = self._load_chars_map()
@@ -119,6 +128,15 @@ class HomoglyphReplacer:
             for key, values in chars_map.items():
                 chars_map[key] = [values[0]]
 
+        # TODO: Support multi-character homoglyphs
+        # For now, we only support single character homoglyphs
+        # Filter out entries with more than one character
+        chars_map = {
+            key: [value for value in values if len(value) == 1]
+            for key, values in chars_map.items()
+            if len(key) == 1
+        }
+
         return chars_map
 
     def _create_reverse_chars_map(self) -> Mapping[str, List[str]]:
@@ -134,133 +152,6 @@ class HomoglyphReplacer:
                 reverse_map.setdefault(value, []).append(key)
 
         return reverse_map
-
-    def is_replaceable(self, char: str) -> bool:
-        """
-        Check if a character is replaceable with a homoglyph.
-
-        Args:
-            char (str): Character to check.
-
-        Returns:
-            bool: True if the character is replaceable, False otherwise.
-        """
-        return (
-            char in self.chars_map
-            and unicodedata.category(char) in self.unicode_categories_to_replace
-        )
-
-    def get_homoglpyh(self, char: str) -> str:
-        """
-        Get a homoglyph for a character.
-
-        Args:
-            char (str): Character to replace.
-
-        Returns:
-            str: Homoglyph for the character.
-        """
-        return self.random_state.choice(self.chars_map[char])
-
-    def is_dangerous(self, char: str) -> bool:
-        """
-        Check if a character is a dangerous homoglyph.
-
-        Args:
-            char (str): Character to check.
-
-        Returns:
-            bool: True if the character is a dangerous homoglyph, False otherwise.
-        """
-        return char in self.reverse_chars_map
-
-    def get_original(self, char: str) -> List[str]:
-        """
-        Get the original character for a homoglyph.
-
-        Args:
-            char (str): Homoglyph to replace.
-
-        Returns:
-            str: Original character for the homoglyph.
-        """
-        return self.reverse_chars_map[char]
-
-    def _get_script_counts(self, text: str) -> Mapping[str, int]:
-        """
-        Count the occurrences of each script in the text.
-
-        Args:
-            text (str): Text to analyze.
-
-        Returns:
-            Mapping[str, int]: Counts of characters in each script.
-        """
-
-        script_counts = Counter(unicodedataplus.script(char) for char in text)
-        return dict(script_counts)
-
-    def _detect_dominant_script(self, text: str) -> str:
-        """
-        Detect the dominant script in the text.
-
-        Args:
-            text (str): Text to analyze.
-
-        Returns:
-            str: Dominant script in the text.
-        """
-        script_counts = self._get_script_counts(text=text)
-        total_count = sum(script_counts.values())
-        dominant_script = max(script_counts, key=script_counts.get)
-        if script_counts[dominant_script] / total_count < 0.75:
-            logging.warning(
-                f"The dominant script '{dominant_script}' comprises less than 75% of the total character count. This is unusual, as most texts predominantly consist of characters from a single script. Proceed with caution, as this may affect the reliability of the analysis."
-            )
-        return dominant_script
-
-    def _get_block_counts(self, text: str) -> Mapping[str, int]:
-        """
-        Count the number of characters in each Unicode block in the text.
-
-        Args:
-            text (str): Text to analyze.
-
-        Returns:
-            Mapping[str, int]: Counts of characters in each Unicode block.
-        """
-        block_counts = Counter(unicodedataplus.block(char) for char in text)
-        return dict(block_counts)
-
-    def _detect_dominant_block(self, text: str) -> str:
-        """
-        Detect the dominant Unicode block in the text.
-
-        Args:
-            text (str): Text to analyze.
-
-        Returns:
-            str: Dominant Unicode block in the text.
-        """
-        block_counts = self._get_block_counts(text=text)
-        total_count = sum(block_counts.values())
-        dominant_block = max(block_counts, key=block_counts.get)
-        if block_counts[dominant_block] / total_count < 0.75:
-            logging.warning(
-                f"The dominant Unicode block '{dominant_block}' comprises less than 75% of the total character count. This is unusual, as most texts predominantly consist of characters from a single block. Proceed with caution, as this may affect the reliability of the analysis."
-            )
-        return dominant_block
-
-    def _is_script_and_block(
-        self, char: str, script: Optional[str], block: Optional[str]
-    ) -> bool:
-        if not block:
-            return unicodedataplus.script(char) == script
-        else:
-            return (
-                unicodedataplus.script(char) == script
-                and unicodedataplus.block(char) == block
-            )
 
     def _get_base_normalization_map(
         self,
@@ -284,29 +175,26 @@ class HomoglyphReplacer:
             for value in values:
                 # Keep the NFKD entries where the value is in the desired script
                 if (
-                    (
-                        # The char we normalize into should be normalized
-                        unicodedata.is_normalized("NFKD", value)
-                    )
-                    and (
-                        # If we activate only_replace_non_normalized, then the char we normalize from should NOT be normalized
-                        not (
-                            unicodedata.is_normalized("NFKD", key)
-                            and only_replace_non_normalized
-                        )
-                    )
-                    and (
-                        unicodedata.category(key) in self.unicode_categories_to_replace
+                    # The char we normalize into should be normalized
+                    unicodedata.is_normalized("NFKD", value)
+                ) and (
+                    # If we activate only_replace_non_normalized, then the char we normalize from should NOT be normalized
+                    not (
+                        unicodedata.is_normalized("NFKD", key)
+                        and only_replace_non_normalized
                     )
                 ):
                     base_normalization_map.setdefault(key, []).append(value)
 
         return base_normalization_map
 
-    def get_normalization_map_for_script_and_block(
+    def get_normalization_map_for_script_block_and_category(
         self,
         script: str,
         block: str = None,
+        unicode_categories_to_replace: Set[
+            str
+        ] = _DEFAULT_UNICODE_CATEGORIES_TO_REPLACE,
         only_replace_non_normalized=False,
         **kwargs,
     ) -> Mapping[int, str]:
@@ -343,13 +231,14 @@ class HomoglyphReplacer:
                         )
                     )
                     and (
-                        unicodedata.category(key) in self.unicode_categories_to_replace
+                        is_category(
+                            text=key,
+                            category=unicode_categories_to_replace,
+                        )
                     )
                     and (
                         # The result we get after normalizing should be in the appropriate script and block
-                        self._is_script_and_block(
-                            char=value, script=script, block=block
-                        )
+                        is_script_and_block(text=value, script=script, block=block)
                     )
                 ):
                     script_normalization_map[key] = value
@@ -384,8 +273,8 @@ class HomoglyphReplacer:
             return apply_dominant_script_and_block_strategy(
                 replacer=self, text=text, **kwargs
             )
-        elif strategy == NormalizationStrategies.CONTEXT_AWARE:
-            return apply_context_aware_strategy(
+        elif strategy == NormalizationStrategies.LOCAL_CONTEXT:
+            return apply_local_context_strategy(
                 normalization_map=self.base_normalization_map, text=text, **kwargs
             )
         elif strategy == NormalizationStrategies.TOKENIZATION:
@@ -394,8 +283,19 @@ class HomoglyphReplacer:
                 mapping=self.base_normalization_map,
             )
         elif strategy == NormalizationStrategies.LANGUAGE_MODEL:
-            raise NotImplementedError(
-                "Language model normalization strategy is not implemented yet."
+            import transformers
+
+            lm = transformers.AutoModelForMaskedLM.from_pretrained(
+                "google-bert/bert-base-multilingual-cased"
+            )
+            tokenizer = transformers.AutoTokenizer.from_pretrained(
+                "google-bert/bert-base-multilingual-cased"
+            )
+            return apply_language_model_strategy(
+                text=text,
+                mapping=self.base_normalization_map,
+                language_model=lm,
+                tokenizer=tokenizer,
             )
         else:
             raise NotImplementedError(f"Strategy {strategy} is unknown.")

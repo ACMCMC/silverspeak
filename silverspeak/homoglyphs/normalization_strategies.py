@@ -4,6 +4,8 @@ import unicodedata
 import unicodedataplus
 import logging
 import tqdm
+import transformers
+import torch
 
 
 def detect_dominant_script(text: str) -> str:
@@ -58,7 +60,7 @@ def apply_dominant_script_strategy(replacer, text: str, **kwargs):
         str: Normalized text.
     """
     dominant_script = detect_dominant_script(text)
-    normalization_map = replacer.get_normalization_map_for_script_and_block(
+    normalization_map = replacer.get_normalization_map_for_script_block_and_category(
         script=dominant_script, **kwargs
     )
     return text.translate(str.maketrans(normalization_map))
@@ -77,15 +79,15 @@ def apply_dominant_script_and_block_strategy(replacer, text: str, **kwargs):
     """
     dominant_script = detect_dominant_script(text)
     dominant_block = detect_dominant_block(text)
-    normalization_map = replacer.get_normalization_map_for_script_and_block(
+    normalization_map = replacer.get_normalization_map_for_script_block_and_category(
         script=dominant_script, block=dominant_block, **kwargs
     )
     return text.translate(str.maketrans(normalization_map))
 
 
-def translate_with_context(
+def apply_local_context_strategy(
     text: str,
-    mapping: Mapping[str, List[str]],
+    normalization_map: Mapping[str, List[str]],
     N: int = 10,
 ) -> str:
     """
@@ -112,12 +114,12 @@ def translate_with_context(
     }
 
     # Do not use a translation table here - instead, process the text character by character keeping track of all the properties of the characters in the window
-    replaced_text = []
+    replaced_text = ""
     for i, char in enumerate(text):
         # Check if the character is in the mapping
-        if char in mapping:
+        if char in normalization_map:
             # Now, we have a set of possibilities - the set of homoglyphs for this character
-            possible_chars = [char] + mapping[char]
+            possible_chars = [char] + normalization_map[char]
             # We need to check the context - we will use a sliding window of size N
             # Adjust the context window to always have 10 characters, even at the start or end
             # For char i, we should have i-4 to i + 4
@@ -156,32 +158,26 @@ def translate_with_context(
                 )
             # If we found a character that matches the properties, we use it
             if best_char:
-                replaced_text.append(best_char)
+                replaced_text += best_char
             else:
                 # If we didn't find a character that matches the properties, we keep the original character
-                replaced_text.append(char)
+                replaced_text += char
         # If the character is not in the mapping, we keep it as is
         else:
-            replaced_text.append(char)
+            replaced_text += char
 
-    return "".join(replaced_text)
-
-
-def apply_context_aware_strategy(normalization_map, text, **kwargs):
-    """
-    Normalize text using a context-aware strategy.
-
-    Args:
-        normalization_map: The normalization map to use.
-        text (str): Text to normalize.
-
-    Returns:
-        str: Normalized text.
-    """
-    return translate_with_context(text, normalization_map)
+    return replaced_text
 
 
-def apply_tokenizer_strategy(text: str, mapping: Mapping[str, List[str]], **kwargs):
+def apply_tokenizer_strategy(
+    text: str,
+    mapping: Mapping[str, List[str]],
+    LONGEST_START_WEIGHT: float = 0.4,
+    LONGEST_TOKEN_WEIGHT: float = 0.3,
+    NUM_POSSIBLE_TOKENS_WEIGHT: float = 0.2,
+    NUM_TOKENS_CONTAINING_CHAR_WEIGHT: float = 0.1,
+    **kwargs,
+):
     """
     Normalize text using a tokenizer strategy.
 
@@ -210,7 +206,7 @@ def apply_tokenizer_strategy(text: str, mapping: Mapping[str, List[str]], **kwar
 
     vocab = [token[1:] if token.startswith("▁") else token for token in vocab]
 
-    normalized_text = []
+    normalized_text = ""
 
     # To select the correct characters, analyze each at a time
     for i, char in tqdm.tqdm(enumerate(text), desc="Normalizing text", total=len(text)):
@@ -242,8 +238,8 @@ def apply_tokenizer_strategy(text: str, mapping: Mapping[str, List[str]], **kwar
                 char: [
                     token_tuple
                     for token_tuple in tokens
-                    # Is the start of the token in the text?
-                    if text.startswith(token_tuple[0], i - len(token_tuple[0]), i)
+                    # Is the start of the token in the final part of the normalized text?
+                    if normalized_text.endswith(token_tuple[0])
                 ]
                 for char, tokens in possible_token_starts.items()
             }
@@ -258,107 +254,118 @@ def apply_tokenizer_strategy(text: str, mapping: Mapping[str, List[str]], **kwar
                 logging.warning(
                     f"No possible tokens found for character '{char}' (at index {i}) in context '{text}'. Keeping the original character."
                 )
-                normalized_text.append(char)
-                continue
-            elif len(possible_token_starts) == 1:
-                # If there's only one possible token, we just take it
-                normalized_text.append(next(iter(possible_token_starts.keys())))
+                normalized_text += char
                 continue
 
-            # Now that we have all possible tokens, we want to find the one that matches our success criteria:
-            # The best char is the one that:
-            # 1. Has the longest start
-            # 2. Has the longest token
-            # 3. Among those possible characters, we want the one that has the largest number of possible tokens
-            # 4. If there's a tie, we want to keep the default best char which is the one that had the largest list of possible starts
+            # Calculate scores for each criterion and aggregate them with weights
+            scores = {}
+            individual_scores = {}
+            normalized_individual_scores = {}
 
-            # 1. Has the longest start
-            max_possible_token_start_length = max(
-                max(len(token[0]) for token in tokens)
-                for tokens in possible_token_starts.values()
-            )
-
-            # Discard all of the possible tokens that are not the longest
-            possible_max_len_token_starts = {}
             for char, tokens in possible_token_starts.items():
-                for token in tokens:
-                    if len(token[0]) == max_possible_token_start_length:
-                        possible_max_len_token_starts.setdefault(char, []).append(token)
-                    # We can't break here because we need to check all of the tokens - they are sorted by length of the full token, not the length of the start
-            # If there's only one candidate, we just take it
-            if len(possible_max_len_token_starts) == 1:
-                normalized_text.append(next(iter(possible_max_len_token_starts.keys())))
-                continue
+                # Criterion 1: Average length of starts
+                avg_start_length = sum(len(token[0]) for token in tokens) / len(tokens)
 
-            # 2. Has the longest token
-            # What are the chars with the max length? Since the lists are sorted, we can just take the length of the first one
-            max_possible_token_length = max(
-                # The length (1) of the first token in the list of possible tokens (0)
-                v[0][1]
-                for v in possible_max_len_token_starts.values()
-            )
+                # Criterion 2: Average token length
+                avg_token_length = sum(token[1] for token in tokens) / len(tokens)
 
-            # Discard all of the possible tokens that are not the longest
-            for char, tokens in possible_max_len_token_starts.items():
-                for token_index, token in enumerate(tokens):
-                    if token[1] == max_possible_token_length:
-                        # Don't do anything - we want to keep this token
-                        pass
-                    else:
-                        # If the token is not the longest, we discard it and all after itself
-                        possible_max_len_token_starts[char] = possible_max_len_token_starts[char][
-                            : token_index
-                        ]
-                        # since the lists are sorted by full token length, we can just break
-                        break
+                # Criterion 3: The one that has the largest number of possible tokens
+                num_possible_tokens_score = len(tokens)
 
-            # Discard any possible characters that have no possible tokens
-            possible_max_len_token_starts = {
-                char: v
-                for char, v in possible_max_len_token_starts.items()
-                if len(v) > 0
-            }
+                # Criterion 4: Number of tokens containing the character (largest list of possible starts)
+                num_tokens_containing_char = len(possible_token_starts[char])
 
-            # If there's only one candidate, we just take it
-            if len(possible_max_len_token_starts) == 1:
-                normalized_text.append(next(iter(possible_max_len_token_starts.keys())))
-                continue
+                # Store individual scores
+                individual_scores[char] = {
+                    "avg_start_length": avg_start_length,
+                    "avg_token_length": avg_token_length,
+                    "num_possible_tokens_score": num_possible_tokens_score,
+                    "num_tokens_containing_char": num_tokens_containing_char,
+                }
 
-            # 3. Among those possible characters, we want the one that has the largest number of possible tokens
-
-            # Now, we have a list of possible tokens that are the longest
-            # We want to find the one that has the largest number of possible tokens
-            # i.e. the one that has the largest number of possible tokens
-            # We can do this by just taking the length of the list of the tokens of the possible token starts
-            max_number_of_possible_tokens = max(
-                len(v) for v in possible_max_len_token_starts.values()
-            )
-            # Now, we want to find the one that has the largest number of possible tokens
-            possible_max_len_token_starts = {
-                k: v
-                for k, v in possible_max_len_token_starts.items()
-                if len(v) == max_number_of_possible_tokens
-            }
-            if len(possible_max_len_token_starts) == 1:
-                normalized_text.append(next(iter(possible_max_len_token_starts.keys())))
-                continue
-
-            # 4. If there's a tie, we want to keep the default best char which is the one that had the largest list of possible starts
-            logging.warning(
-                f"Found multiple candidates for the best character for '{char}' (at index {i}) in context '{text}': {possible_max_len_token_starts}. Using the one with the longest token."
-            )
-            normalized_text.append(
+            # Calculate the maximum values for normalization after individual scores are computed
+            max_avg_start_length = (
+                max(score["avg_start_length"] for score in individual_scores.values())
+                or 1
+            )  # Avoid division by zero
+            max_avg_token_length = (
+                max(score["avg_token_length"] for score in individual_scores.values())
+                or 1
+            )  # Avoid division by zero
+            max_num_possible_tokens = (
                 max(
-                    possible_max_len_token_starts.keys(),
-                    # Use the length of the first token in the list of all possible tokens (possible_token_starts), not just the list of the longest tokens
-                    key=lambda x: len(possible_token_starts[x][0]),
+                    score["num_possible_tokens_score"]
+                    for score in individual_scores.values()
                 )
-            )
-            continue
+                or 1
+            )  # Avoid division by zero
+            max_num_tokens_containing_char = (
+                max(
+                    score["num_tokens_containing_char"]
+                    for score in individual_scores.values()
+                )
+                or 1
+            )  # Avoid division by zero
 
+            for char, scores_dict in individual_scores.items():
+                # Normalize individual scores
+                longest_start_score = (
+                    scores_dict["avg_start_length"] / max_avg_start_length
+                )
+                longest_token_score = (
+                    scores_dict["avg_token_length"] / max_avg_token_length
+                )
+                num_possible_tokens_score = (
+                    scores_dict["num_possible_tokens_score"] / max_num_possible_tokens
+                )
+                num_tokens_containing_char = (
+                    scores_dict["num_tokens_containing_char"]
+                    / max_num_tokens_containing_char
+                )
+
+                # Store normalized individual scores
+                normalized_individual_scores[char] = {
+                    "longest_start_score": longest_start_score,
+                    "longest_token_score": longest_token_score,
+                    "num_possible_tokens_score": num_possible_tokens_score,
+                    "num_tokens_containing_char": num_tokens_containing_char,
+                }
+
+                # Aggregate scores with parameterized weights
+                scores[char] = (
+                    LONGEST_START_WEIGHT * longest_start_score
+                    + LONGEST_TOKEN_WEIGHT * longest_token_score
+                    + NUM_POSSIBLE_TOKENS_WEIGHT * num_possible_tokens_score
+                    + NUM_TOKENS_CONTAINING_CHAR_WEIGHT * num_tokens_containing_char
+                )
+
+            # Select the character with the highest aggregated score
+            best_char = max(scores, key=scores.get)
+            normalized_text += best_char
         else:
             # If the character is not in the mapping, we keep it as is
-            normalized_text.append(char)
+            normalized_text += char
 
     # Join the normalized tokens back into a single string
-    return "".join(normalized_text)
+    return normalized_text
+
+
+@torch.inference_mode()
+def apply_language_model_strategy(
+    text: str,
+    mapping: Mapping[str, List[str]],
+    language_model: transformers.PreTrainedModel,
+    tokenizer: transformers.PreTrainedTokenizer,
+    **kwargs,
+):
+    """
+    Normalize text using a language model strategy.
+
+    Args:
+        text (str): Text to normalize.
+
+    Returns:
+        str: Normalized text.
+    """
+    normalized_text = text
+    return normalized_text

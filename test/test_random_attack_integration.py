@@ -2,13 +2,23 @@ import pytest
 from silverspeak.homoglyphs.random_attack import random_attack
 from silverspeak.homoglyphs.normalize import normalize_text as normalize
 from silverspeak.homoglyphs.utils import NormalizationStrategies, TypesOfHomoglyphs
+import math
 
 
 POSSIBLE_STRATEGIES = [
     NormalizationStrategies.DOMINANT_SCRIPT,
     NormalizationStrategies.DOMINANT_SCRIPT_AND_BLOCK,
-    NormalizationStrategies.CONTEXT_AWARE,
+    NormalizationStrategies.LOCAL_CONTEXT,
     NormalizationStrategies.TOKENIZATION,
+    NormalizationStrategies.LANGUAGE_MODEL,
+]
+
+MIXED_SCRIPT_PHRASES = [
+    'En una tarde tranquila, los niños juegan en el parque mientras los adultos disfrutan de una conversación bajo la sombra de los árboles, y uno de ellos menciona: "这是一个测试句子。"',
+    'On a peaceful summer evening, children play in the park while adults chat under the trees, and someone says: "Это тестовое предложение。"',
+    "Par une soirée d'été paisible, les enfants jouent dans le parc tandis que les adultes discutent sous les arbres, et l'un d'eux ajoute : \"これはテスト文です。\"",
+    'An einem ruhigen Sommerabend spielen Kinder im Park, während Erwachsene unter den Bäumen plaudern, und jemand bemerkt: "هذا جملة اختبارية。"',
+    'Numa tarde de verão tranquila, as crianças brincam no parque enquanto os adultos conversam à sombra das árvores, e alguém comenta: "Αυτή είναι μια δοκιμαστική πρόταση。"',
 ]
 
 
@@ -67,9 +77,7 @@ def test_random_attack_and_normalize_single_script(phrase, strategy):
     )
 
     # Normalize the attacked text using the given strategy
-    normalized_text = normalize(
-        text=attacked_text, strategy=strategy
-    )
+    normalized_text = normalize(text=attacked_text, strategy=strategy)
 
     # Assert that the normalized text matches the original
     assert normalized_text == phrase
@@ -77,13 +85,7 @@ def test_random_attack_and_normalize_single_script(phrase, strategy):
 
 @pytest.mark.parametrize(
     "phrase",
-    [
-        'En una tarde tranquila, los niños juegan en el parque mientras los adultos disfrutan de una conversación bajo la sombra de los árboles, y uno de ellos menciona: "这是一个测试句子。"',  # Spanish with Chinese
-        'On a peaceful summer evening, children play in the park while adults chat under the trees, and someone says: "Это тестовое предложение."',  # English with Russian
-        "Par une soirée d'été paisible, les enfants jouent dans le parc tandis que les adultos discutent sous les arbres, et l'un d'eux ajoute : \"これはテスト文です。\"",  # French with Japanese
-        'An einem ruhigen Sommerabend spielen Kinder im Park, während Erwachsene unter den Bäumen plaudern, und jemand bemerkt: "هذا جملة اختبارية."',  # German with Arabic
-        'Numa tarde de verão tranquila, as crianças brincam no parque enquanto os adultos conversam à sombra das árvores, e alguém comenta: "Αυτή είναι μια δοκιμαστική πρόταση."',  # Portuguese with Greek
-    ],
+    MIXED_SCRIPT_PHRASES,
 )
 @pytest.mark.parametrize("strategy", POSSIBLE_STRATEGIES)
 def test_random_attack_and_normalize_mixed_scripts(phrase, strategy):
@@ -98,9 +100,41 @@ def test_random_attack_and_normalize_mixed_scripts(phrase, strategy):
     )
 
     # Normalize the attacked text using the given strategy
-    normalized_text = normalize(
-        text=attacked_text, strategy=strategy
-    )
+    normalized_text = normalize(text=attacked_text, strategy=strategy)
 
     # Assert that the normalized text matches the original
     assert normalized_text == phrase
+
+
+@pytest.mark.parametrize(
+    "phrase",
+    MIXED_SCRIPT_PHRASES,
+)
+@pytest.mark.parametrize("strategy", POSSIBLE_STRATEGIES)
+def test_random_attack_and_normalize_mixed_scripts_with_tolerance(
+    phrase, strategy, tolerance=0.05  # 5% tolerance
+):
+    """
+    Test the random_attack and normalize functions with mixed-script phrases and strategies,
+    allowing for a tolerance of up to 5% mismatches.
+    """
+    # Apply random attack
+    attacked_text = random_attack(
+        phrase,
+        percentage=0.2,
+        random_seed=42,
+    )
+
+    # Normalize the attacked text using the given strategy
+    normalized_text = normalize(text=attacked_text, strategy=strategy)
+
+    # Calculate the tolerance threshold
+    max_mismatches = math.ceil(len(phrase) * tolerance)
+
+    # Count mismatches
+    mismatches = sum(1 for a, b in zip(normalized_text, phrase) if a != b)
+
+    # Assert that mismatches are within the allowed tolerance
+    assert (
+        mismatches <= max_mismatches
+    ), f"Mismatches ({mismatches}) exceed tolerance ({max_mismatches})."
