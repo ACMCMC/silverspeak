@@ -6,6 +6,9 @@
 Welcome to SilverSpeak's documentation!
 =======================================
 
+.. note::
+   This documentation has been generated using AI assistance. While efforts have been made to ensure accuracy, some inaccuracies may still be present.
+
 .. toctree::
    :maxdepth: 2
    :caption: Contents:
@@ -14,6 +17,12 @@ Welcome to SilverSpeak's documentation!
    usage
    api_reference
    challenges
+   normalization_strategies
+   normalization_strategies/dominant_script
+   normalization_strategies/dominant_script_and_block
+   normalization_strategies/local_context
+   normalization_strategies/tokenizer
+   normalization_strategies/language_model
 
 Indices and tables
 ==================

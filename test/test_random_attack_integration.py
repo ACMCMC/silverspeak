@@ -3,6 +3,7 @@ from silverspeak.homoglyphs.random_attack import random_attack
 from silverspeak.homoglyphs.normalize import normalize_text as normalize
 from silverspeak.homoglyphs.utils import NormalizationStrategies, TypesOfHomoglyphs
 import math
+import logging
 
 
 POSSIBLE_STRATEGIES = [
@@ -132,11 +133,14 @@ def test_random_attack_and_normalize_with_tolerance_and_fallback(
     # Check if at least one strategy works
     for strategy in POSSIBLE_STRATEGIES:
         normalized_text = normalize(text=attacked_text, strategy=strategy)
-        mismatches = sum(1 for a, b in zip(normalized_text, phrase) if a != b)
+        mismatches = len(set(normalized_text) ^ set(phrase))
         if mismatches <= max_mismatches:
+            logging.info(
+                f"Strategy {strategy} succeeded with {mismatches} mismatches (within tolerance) for input: {phrase}"
+            )
             return  # At least one strategy succeeded
 
     # If no strategy succeeded within tolerance, fail the test
     pytest.fail(
-        f"None of the strategies worked within the tolerance for input: {phrase}"
+        f"None of the strategies worked within the tolerance for input: \"{phrase}\" and attacked text: \"{attacked_text}\""
     )

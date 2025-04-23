@@ -1,5 +1,5 @@
 Challenges in Normalizing Texts with Homoglyphs
-=============================================
+==============================================
 
 Normalizing texts that have been manipulated using homoglyphs presents a significant challenge due to the inherent ambiguity in determining the original characters. Homoglyphs are visually similar or identical characters that can belong to different scripts or encodings. For example, the Latin letter 'a' and the Cyrillic letter 'а' appear identical but are distinct characters.
 
