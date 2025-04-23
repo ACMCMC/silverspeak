@@ -23,20 +23,19 @@ chars_map = chars_map[chars_map["original"].str.split().str.len() == 1]
 
 # Convert all characters in the replacement column
 chars_map["replacement"] = chars_map["replacement"].apply(
-    lambda x: {chr(int(char, 16)) for char in x.split()}
+    lambda x: ''.join([chr(int(char, 16)) for char in x.split()])
 )
+
+chars_map_dict = {}
 
 # Now, we have two columns with rows like '0021' and '0306 0307'. We want to map this to their Unicode characters.
 # We will use the chr() function to convert the hex to a Unicode character.
-chars_map = {
-    chr(int(row["original"], 16)): row["replacement"] for _, row in chars_map.iterrows()
-}
-
-# Save it as a JSON file
-chars_map_json = {k: list(v) for k, v in chars_map.items()}
+for _, row in chars_map.iterrows():
+    original = chr(int(row["original"], 16))
+    chars_map_dict.setdefault(original, []).append(row["replacement"])
 
 with open(os.path.join(pathlib.Path(__file__).parent, "unicode_confusables_map.json"), "w") as file:
-    json.dump(chars_map_json, file, ensure_ascii=False, indent=4)
+    json.dump(chars_map_dict, file, ensure_ascii=False, indent=4)
 
 # Generate a new map ensuring case consistency
 def filter_same_case(original_char, replacements):
