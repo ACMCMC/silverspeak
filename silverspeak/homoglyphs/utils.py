@@ -16,14 +16,15 @@ from typing import List, Set
 class TypesOfHomoglyphs(Enum):
     """
     Enumeration of the different types of homoglyphs supported by SilverSpeak.
-    
+
     Values:
-        IDENTICAL: Characters that are visually identical in most fonts but have 
+        IDENTICAL: Characters that are visually identical in most fonts but have
                    different Unicode code points.
         CONFUSABLES: Characters identified as confusables by Unicode.
         OCR: Characters that might be confused in OCR systems.
         OCR_REFINED: A refined subset of OCR confusables with high visual similarity.
     """
+
     IDENTICAL = "identical"
     CONFUSABLES = "confusables"
     OCR = "ocr"
@@ -49,7 +50,7 @@ _DEFAULT_HOMOGLYPHS_TO_USE: List[TypesOfHomoglyphs] = [
 class NormalizationStrategies(Enum):
     """
     Enumeration of text normalization strategies for homoglyph replacement.
-    
+
     Values:
         DOMINANT_SCRIPT: Normalize based on the dominant Unicode script in the text.
         DOMINANT_SCRIPT_AND_BLOCK: Normalize based on both dominant script and Unicode block.
@@ -57,6 +58,7 @@ class NormalizationStrategies(Enum):
         TOKENIZATION: Normalize based on tokenization of the text.
         LANGUAGE_MODEL: Normalize using a language model to determine the most likely characters.
     """
+
     DOMINANT_SCRIPT = "dominant_script"
     DOMINANT_SCRIPT_AND_BLOCK = "dominant_script_and_block"
     LOCAL_CONTEXT = "local_context"

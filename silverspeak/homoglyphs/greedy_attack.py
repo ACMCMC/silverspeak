@@ -19,7 +19,7 @@ from silverspeak.homoglyphs.homoglyph_replacer import HomoglyphReplacer
 from silverspeak.homoglyphs.utils import (
     _DEFAULT_HOMOGLYPHS_TO_USE,
     _DEFAULT_UNICODE_CATEGORIES_TO_REPLACE,
-    TypesOfHomoglyphs
+    TypesOfHomoglyphs,
 )
 
 logger = logging.getLogger(__name__)
@@ -37,17 +37,17 @@ def greedy_attack(
 ) -> str:
     """
     Replace characters with homoglyphs using a greedy approach.
-    
-    This function replaces characters in the input text with homoglyphs (visually 
+
+    This function replaces characters in the input text with homoglyphs (visually
     similar characters with different Unicode code points) using a greedy approach.
-    The function will attempt to replace every eligible character up to the specified 
+    The function will attempt to replace every eligible character up to the specified
     percentage limit.
-    
+
     Args:
         text (str): The input text to transform.
         percentage (float, optional): The percentage of characters to replace (0.0-1.0).
             Defaults to 0.1 (10%).
-        random_seed (int, optional): Seed for the random number generator to ensure 
+        random_seed (int, optional): Seed for the random number generator to ensure
             reproducible results. Defaults to 42.
         unicode_categories_to_replace (Set[str], optional): Unicode categories of characters
             to consider for replacement. Defaults to predefined categories.
@@ -59,18 +59,18 @@ def greedy_attack(
             as the dominant script in the text. Defaults to False.
         same_block (bool, optional): Whether to only use homoglyphs from the same Unicode block
             as the dominant block in the text. Defaults to False.
-            
+
     Returns:
         str: The transformed text with homoglyph replacements.
-        
+
     Raises:
         ValueError: If the text is None or empty, or if percentage is out of range.
-        
+
     Example:
         ```python
         # Replace 5% of characters with homoglyphs
         modified_text = greedy_attack("Hello world", percentage=0.05, random_seed=42)
-        
+
         # Replace 10% of characters with homoglyphs, prioritizing replacements
         modified_text = greedy_attack("Hello world", percentage=0.1, replace_with_priority=True)
         ```
@@ -78,16 +78,16 @@ def greedy_attack(
     # Input validation
     if text is None:
         raise ValueError("Input text cannot be None")
-        
+
     if not text:
         return ""
-        
+
     if percentage < 0.0 or percentage > 1.0:
         raise ValueError("Percentage must be between 0.0 and 1.0")
-    
+
     # Initialize random number generator
     random_state = random.Random(random_seed)
-    
+
     # Create homoglyph replacer
     try:
         replacer = HomoglyphReplacer(
@@ -99,7 +99,7 @@ def greedy_attack(
     except Exception as e:
         logger.error(f"Failed to initialize HomoglyphReplacer: {e}")
         raise
-    
+
     # Calculate number of characters to replace
     num_chars = len(text)
     num_to_replace = int(num_chars * percentage)
@@ -109,7 +109,7 @@ def greedy_attack(
     # Replace characters in the text
     result = []
     replacements_made = 0
-    
+
     for char in text:
         if char in replacer.chars_map and replacements_made < num_to_replace:
             # Get replacements for this character
@@ -121,9 +121,9 @@ def greedy_attack(
                 replacements_made += 1
                 logger.debug(f"Replaced '{char}' with '{replacement}'")
                 continue
-        
+
         # No replacement available or percentage limit reached
         result.append(char)
-    
+
     logger.info(f"Applied {replacements_made} homoglyph replacements ({replacements_made/num_chars:.1%} of text)")
     return "".join(result)

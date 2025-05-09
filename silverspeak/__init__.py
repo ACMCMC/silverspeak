@@ -1,7 +1,7 @@
 """
 SilverSpeak: A professional library for text normalization and homoglyph detection/replacement.
 
-This library provides tools for detecting and normalizing homoglyphs (characters 
+This library provides tools for detecting and normalizing homoglyphs (characters
 that look similar but have different Unicode code points), which can be used for
 text normalization, security applications, and adversarial text generation.
 
@@ -18,11 +18,11 @@ License: See LICENSE file in the project root
 
 __version__ = "1.0.0"
 
-from silverspeak.homoglyphs.random_attack import random_attack
 from silverspeak.homoglyphs.greedy_attack import greedy_attack
-from silverspeak.homoglyphs.normalize import normalize_text
 from silverspeak.homoglyphs.homoglyph_replacer import HomoglyphReplacer
-from silverspeak.homoglyphs.utils import TypesOfHomoglyphs, NormalizationStrategies
+from silverspeak.homoglyphs.normalize import normalize_text
+from silverspeak.homoglyphs.random_attack import random_attack
+from silverspeak.homoglyphs.utils import NormalizationStrategies, TypesOfHomoglyphs
 
 __all__ = [
     "random_attack",

@@ -10,14 +10,14 @@ License: See LICENSE file in the project root
 """
 
 import logging
-from typing import List, Optional, Union
+from typing import List, Optional, Set, Union
 
 from silverspeak.homoglyphs.homoglyph_replacer import HomoglyphReplacer
 from silverspeak.homoglyphs.utils import (
     _DEFAULT_HOMOGLYPHS_TO_USE,
     _DEFAULT_UNICODE_CATEGORIES_TO_REPLACE,
-    TypesOfHomoglyphs,
     NormalizationStrategies,
+    TypesOfHomoglyphs,
 )
 
 logger = logging.getLogger(__name__)
@@ -25,10 +25,10 @@ logger = logging.getLogger(__name__)
 
 def normalize_text(
     text: str,
-    unicode_categories_to_replace: Optional[List[str]] = _DEFAULT_UNICODE_CATEGORIES_TO_REPLACE,
+    unicode_categories_to_replace: Set[str] = _DEFAULT_UNICODE_CATEGORIES_TO_REPLACE,
     types_of_homoglyphs_to_use: List[TypesOfHomoglyphs] = _DEFAULT_HOMOGLYPHS_TO_USE,
     replace_with_priority: bool = False,
-    strategy: Union[str, NormalizationStrategies] = NormalizationStrategies.LOCAL_CONTEXT,
+    strategy: NormalizationStrategies = NormalizationStrategies.LOCAL_CONTEXT,
 ) -> str:
     """
     Normalize text by replacing homoglyphs with their standard equivalents.
@@ -38,15 +38,15 @@ def normalize_text(
     
     Args:
         text (str): The text to normalize.
-        unicode_categories_to_replace (Optional[List[str]], optional): Unicode categories to replace.
+        unicode_categories_to_replace (Set[str]): Unicode categories to replace.
             Defaults to predefined common categories.
-        types_of_homoglyphs_to_use (List[TypesOfHomoglyphs], optional): Types of homoglyphs to consider.
+        types_of_homoglyphs_to_use (List[TypesOfHomoglyphs]): Types of homoglyphs to consider.
             Defaults to predefined common homoglyph types.
         replace_with_priority (bool, optional): Whether to replace characters based on priority.
             When True, replacements are chosen by order in the homoglyph lists.
             When False, replacements are chosen based on context or other strategies.
             Defaults to False.
-        strategy (Union[str, NormalizationStrategies], optional): The normalization strategy to use.
+        strategy (NormalizationStrategies): The normalization strategy to use.
             Defaults to LOCAL_CONTEXT, which selects replacements based on surrounding characters.
             
     Returns:

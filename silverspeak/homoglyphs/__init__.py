@@ -19,14 +19,14 @@ License: See LICENSE file in the project root
 """
 
 from .greedy_attack import greedy_attack
-from .random_attack import random_attack
-from .normalize import normalize_text
 from .homoglyph_replacer import HomoglyphReplacer
-from .utils import TypesOfHomoglyphs, NormalizationStrategies
+from .normalize import normalize_text
+from .random_attack import random_attack
+from .utils import NormalizationStrategies, TypesOfHomoglyphs
 
 __all__ = [
     "greedy_attack",
-    "random_attack", 
+    "random_attack",
     "normalize_text",
     "HomoglyphReplacer",
     "TypesOfHomoglyphs",

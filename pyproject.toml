@@ -25,6 +25,10 @@ ipykernel = "^6.29.5"
 pytest = "^8.3.5"
 sphinx = "^7.0.0"
 sphinx_rtd_theme = "^1.2.0"
+flake8 = "^6.1.0"
+black = "^23.11.0"
+isort = "^5.12.0"
+mypy = "^1.6.0"
 
 [build-system]
 requires = ["poetry-core>=1.0.0"]
