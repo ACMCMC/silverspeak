@@ -35,3 +35,24 @@ packages = ["silverspeak", "silverspeak.homoglyphs"]
 
 [tool.setuptools.package-data]
 "silverspeak.homoglyphs" = ["identical_map.json", "unicode_confusables_map.json", "ocr_chars_map.json", "ocr_chars_refined_map.json"]
+
+[tool.black]
+line-length = 120
+target-version = ['py311']
+include = '\.pyi?$'
+exclude = '''
+(
+  /(
+      \.eggs
+    | \.git
+    | \.hg
+    | \.mypy_cache
+    | \.tox
+    | \.venv
+    | _build
+    | buck-out
+    | build
+    | dist
+  )/
+)
+'''

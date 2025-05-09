@@ -1,3 +1,15 @@
+"""
+HomoglyphReplacer: Core component for homoglyph replacement operations
+
+This module provides the HomoglyphReplacer class, which is responsible for replacing characters
+with their homoglyphs and normalizing text containing homoglyphs. The class supports multiple
+normalization strategies and homoglyph types.
+
+Author: Aldan Creo (ACMC) <os@acmc.fyi>
+Version: 1.0.0
+License: See LICENSE file in the project root
+"""
+
 import json
 import random
 import unicodedata
@@ -32,19 +44,27 @@ from .script_block_category_utils import (
     is_category,
 )
 
+logger = logging.getLogger(__name__)
+
 
 class HomoglyphReplacer:
     """
-    A class to replace characters with their homoglyphs.
+    A class to replace characters with their homoglyphs and normalize homoglyph text.
+    
+    This class is the core component of SilverSpeak, providing functionality to:
+    1. Replace characters with their visually similar homoglyphs
+    2. Normalize text by replacing homoglyphs with their standard characters
+    3. Support various normalization strategies based on Unicode script, block, and context
 
     Attributes:
         unicode_categories_to_replace (Set[str]): Unicode categories of characters to replace.
-        types_of_homoglyphs_to_use (List[Literal]): Types of homoglyphs to use.
+        types_of_homoglyphs_to_use (List[TypesOfHomoglyphs]): Types of homoglyphs to use.
         replace_with_priority (bool): Whether to replace with priority.
         random_state (random.Random): Random state for reproducibility.
         chars_map (Mapping[str, List[str]]): Mapping of characters to their homoglyphs.
-        reverse_chars_map (Mapping[str, str]): Reverse mapping of homoglyphs to original characters.
-        normalization_table (dict): Table for normalizing text.
+        reverse_chars_map (Mapping[str, List[str]]): Reverse mapping of homoglyphs to original characters.
+        base_normalization_map (Mapping[str, List[str]]): Base table for normalizing text.
+        normalization_translation_maps (dict): Cache of normalization maps by script.
     """
 
     def __init__(
@@ -63,9 +83,13 @@ class HomoglyphReplacer:
 
         Args:
             unicode_categories_to_replace (Set[str]): Unicode categories of characters to replace.
-            types_of_homoglyphs_to_use (List[TYPES_OF_HOMOGLYPHS]): Types of homoglyphs to use.
-            replace_with_priority (bool): Whether to replace with priority.
-            random_seed (int): Seed for random number generator.
+                Defaults to typical letter categories (Ll, Lm, Lo, Lt, Lu).
+            types_of_homoglyphs_to_use (List[TypesOfHomoglyphs]): Types of homoglyphs to use.
+                Defaults to IDENTICAL, CONFUSABLES, and OCR_REFINED.
+            replace_with_priority (bool): Whether to prioritize replacements (use only first homoglyph).
+                Defaults to False.
+            random_seed (int): Seed for random number generator to ensure reproducibility.
+                Defaults to 42.
         """
         self.types_of_homoglyphs_to_use = types_of_homoglyphs_to_use
         self.replace_with_priority = replace_with_priority
@@ -80,10 +104,18 @@ class HomoglyphReplacer:
         )
         # self.normalization_translaion_tables = {} # Do not use this. Using a translation table is too naive at times (we may need to consider context for normalization). Instead, keep mappings in a dict and use them when needed.
         self.normalization_translation_maps = {}
+        logger.debug(f"HomoglyphReplacer initialized with {len(self.chars_map)} character mappings")
 
     def _load_chars_map(self, ensure_bidirectionality=True) -> Mapping[str, List[str]]:
         """
         Load the character mappings from JSON files.
+        
+        This method loads homoglyph maps from the appropriate JSON files based on the
+        specified homoglyph types to use. It can also ensure bidirectionality of mappings.
+
+        Args:
+            ensure_bidirectionality (bool, optional): If True, ensures that for each mapping
+                from character A to B, there is also a mapping from B to A. Defaults to True.
 
         Returns:
             Mapping[str, List[str]]: Mapping of characters to their homoglyphs.
@@ -142,6 +174,10 @@ class HomoglyphReplacer:
     def _create_reverse_chars_map(self) -> Mapping[str, List[str]]:
         """
         Create a reverse mapping of homoglyphs to original characters.
+        
+        This method creates a reverse mapping from the chars_map, so that for each
+        homoglyph, we can find the original character(s) it could represent.
+        This is essential for normalization operations.
 
         Returns:
             Mapping[str, List[str]]: Reverse mapping of homoglyphs to original characters.
@@ -159,15 +195,19 @@ class HomoglyphReplacer:
         **kwargs,
     ) -> Mapping[int, str]:
         """
-        Generate a base normalization map.
-
+        Generate a base normalization map for all homoglyphs.
+        
+        This method creates a base mapping for normalizing homoglyphs, considering
+        whether they are already in a normalized form (NFKD).
+        
         Args:
-            only_replace_non_normalized (bool): If True, only replace non-normalized characters.
+            only_replace_non_normalized (bool): If True, only replace characters that 
+                aren't already in normalized form. Defaults to False.
+            **kwargs: Additional keyword arguments.
 
         Returns:
-            Mapping[int, str]: A normalization map for characters.
+            Mapping[str, List[str]]: A normalization map for characters.
         """
-
         # Generate the normalization table.
         # Create a dictionary with the NFKD entries where the value is in the script we want to normalize (i.e. (this_or_other_script, script) pairs)
         base_normalization_map: Mapping[str, List[str]] = {}
@@ -197,16 +237,24 @@ class HomoglyphReplacer:
         ] = _DEFAULT_UNICODE_CATEGORIES_TO_REPLACE,
         only_replace_non_normalized=False,
         **kwargs,
-    ) -> Mapping[int, str]:
+    ) -> Mapping[str, str]:
         """
-        Generate a normalization table for a specific script.
-
+        Generate a normalization map for a specific script and block.
+        
+        This method creates a mapping for normalizing homoglyphs based on a specific
+        Unicode script and optional block, considering character categories.
+        
         Args:
-            script (str): The script for which the normalization table is generated.
-            only_replace_non_normalized (bool): If True, only replace non-normalized characters.
+            script (str): The target Unicode script (e.g., 'Latin', 'Cyrillic').
+            block (str, optional): The target Unicode block. Defaults to None.
+            unicode_categories_to_replace (Set[str]): Unicode categories of characters to 
+                consider for replacement. Defaults to _DEFAULT_UNICODE_CATEGORIES_TO_REPLACE.
+            only_replace_non_normalized (bool): If True, only replace characters that 
+                aren't already in normalized form. Defaults to False.
+            **kwargs: Additional keyword arguments.
 
         Returns:
-            Mapping[int, str]: A translation table for normalizing text based on the specified script.
+            Mapping[str, str]: A normalization map for the specified script and block.
         """
         # Check if it's in our in-memory cache
         if script in self.normalization_translation_maps:
@@ -254,14 +302,22 @@ class HomoglyphReplacer:
         **kwargs,
     ) -> str:
         """
-        Normalize text by replacing homoglyphs with their original characters,
-        based on the dominant script in the text.
-
+        Normalize text by replacing homoglyphs with their standard characters.
+        
+        This method applies the specified normalization strategy to convert text containing
+        homoglyphs back to standard characters. Different strategies consider different
+        aspects like dominant script, block, local context, tokenization, or language model.
+        
         Args:
             text (str): Text to normalize.
+            strategy (NormalizationStrategies): The normalization strategy to apply.
+            **kwargs: Additional arguments passed to the specific strategy implementation.
 
         Returns:
-            str: Normalized text.
+            str: Normalized text with homoglyphs replaced by standard characters.
+            
+        Raises:
+            NotImplementedError: If the specified strategy is unknown.
         """
         # If the text is empty, return it as is
         if not text:
@@ -285,17 +341,22 @@ class HomoglyphReplacer:
         elif strategy == NormalizationStrategies.LANGUAGE_MODEL:
             import transformers
 
-            lm = transformers.AutoModelForMaskedLM.from_pretrained(
-                "google-bert/bert-base-multilingual-cased"
-            )
-            tokenizer = transformers.AutoTokenizer.from_pretrained(
-                "google-bert/bert-base-multilingual-cased"
-            )
-            return apply_language_model_strategy(
-                text=text,
-                mapping=self.base_normalization_map,
-                language_model=lm,
-                tokenizer=tokenizer,
-            )
+            try:
+                lm = transformers.AutoModelForMaskedLM.from_pretrained(
+                    "google-bert/bert-base-multilingual-cased"
+                )
+                tokenizer = transformers.AutoTokenizer.from_pretrained(
+                    "google-bert/bert-base-multilingual-cased"
+                )
+                return apply_language_model_strategy(
+                    text=text,
+                    mapping=self.base_normalization_map,
+                    language_model=lm,
+                    tokenizer=tokenizer,
+                )
+            except Exception as e:
+                logger.error(f"Failed to load language model: {e}")
+                logger.warning("Falling back to dominant script strategy")
+                return apply_dominant_script_strategy(replacer=self, text=text, **kwargs)
         else:
             raise NotImplementedError(f"Strategy {strategy} is unknown.")

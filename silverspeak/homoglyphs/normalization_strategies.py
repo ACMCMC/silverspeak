@@ -1,5 +1,5 @@
 from collections import Counter
-from typing import List, Mapping
+from typing import List, Mapping, Optional, Dict, Any, Tuple, Union
 import unicodedata
 import unicodedataplus
 import logging
@@ -7,81 +7,225 @@ import tqdm
 import transformers
 import torch
 
+# Configure logging with a standardized format for production use
+logger = logging.getLogger(__name__)
+
+# Default valid log levels
+VALID_LOG_LEVELS = {
+    "DEBUG": logging.DEBUG,
+    "INFO": logging.INFO,
+    "WARNING": logging.WARNING,
+    "ERROR": logging.ERROR,
+    "CRITICAL": logging.CRITICAL,
+}
+
+def configure_logging(level: str = "INFO", format_string: Optional[str] = None) -> None:
+    """
+    Configure the logging system for the library.
+    
+    Args:
+        level (str): Log level (DEBUG, INFO, WARNING, ERROR, CRITICAL).
+        format_string (Optional[str]): Custom format string for log messages.
+            If None, a default format will be used.
+            
+    Returns:
+        None
+    """
+    if format_string is None:
+        format_string = "[%(asctime)s] %(levelname)s [%(name)s.%(funcName)s:%(lineno)d] %(message)s"
+    
+    log_level = VALID_LOG_LEVELS.get(level.upper(), logging.INFO)
+    
+    # Configure the root logger
+    logging.basicConfig(
+        level=log_level,
+        format=format_string,
+        datefmt="%Y-%m-%d %H:%M:%S"
+    )
+    
+    # Set the level for this module's logger
+    logger.setLevel(log_level)
+    
+    # Prevent logging propagation if needed
+    # logger.propagate = False
+
 
 def detect_dominant_script(text: str) -> str:
     """
-    Detect the dominant script in the text.
+    Detect the dominant Unicode script used in the provided text.
+    
+    This function analyzes the script category of each character in the text and
+    returns the most frequently occurring script. If the dominant script comprises
+    less than 75% of the total character count, a warning is logged as this could
+    indicate mixed scripts which may affect normalization.
 
     Args:
-        text (str): Text to analyze.
+        text (str): The input text to analyze for script detection.
 
     Returns:
-        str: Dominant script in the text.
+        str: The name of the dominant Unicode script in the text (e.g., 'Latin', 'Cyrillic', 'Han').
+
+    Note:
+        Requires the unicodedataplus package for script detection.
     """
+    if not text:
+        logging.warning("Empty text provided to detect_dominant_script")
+        return "Unknown"
+        
     script_counts = Counter(unicodedataplus.script(char) for char in text)
     total_count = sum(script_counts.values())
+    
+    if total_count == 0:
+        logging.warning("No valid script information found in the text")
+        return "Unknown"
+        
     dominant_script = max(script_counts, key=script_counts.get)
-    if script_counts[dominant_script] / total_count < 0.75:
+    dominant_percentage = script_counts[dominant_script] / total_count
+    
+    if dominant_percentage < 0.75:
         logging.warning(
-            f"The dominant script '{dominant_script}' comprises less than 75% of the total character count. This is unusual, as most texts predominantly consist of characters from a single script. Proceed with caution, as this may affect the reliability of the analysis."
+            f"The dominant script '{dominant_script}' comprises only {dominant_percentage:.1%} of the total "
+            f"character count. This is unusual, as most texts predominantly consist of characters from a single "
+            f"script. Proceed with caution, as this may affect normalization reliability."
         )
     return dominant_script
 
 
 def detect_dominant_block(text: str) -> str:
     """
-    Detect the dominant Unicode block in the text.
+    Detect the dominant Unicode block used in the provided text.
+    
+    This function analyzes the Unicode block of each character in the text and
+    returns the most frequently occurring block. If the dominant block comprises
+    less than 75% of the total character count, a warning is logged as this could
+    indicate mixed blocks which may affect normalization.
 
     Args:
-        text (str): Text to analyze.
+        text (str): The input text to analyze for Unicode block detection.
 
     Returns:
-        str: Dominant Unicode block in the text.
+        str: The name of the dominant Unicode block in the text (e.g., 'Basic Latin', 'Cyrillic').
+
+    Note:
+        Requires the unicodedataplus package for Unicode block detection.
     """
+    if not text:
+        logging.warning("Empty text provided to detect_dominant_block")
+        return "Unknown"
+    
     block_counts = Counter(unicodedataplus.block(char) for char in text)
     total_count = sum(block_counts.values())
+    
+    if total_count == 0:
+        logging.warning("No valid block information found in the text")
+        return "Unknown"
+    
     dominant_block = max(block_counts, key=block_counts.get)
-    if block_counts[dominant_block] / total_count < 0.75:
+    dominant_percentage = block_counts[dominant_block] / total_count
+    
+    if dominant_percentage < 0.75:
         logging.warning(
-            f"The dominant Unicode block '{dominant_block}' comprises less than 75% of the total character count. This is unusual, as most texts predominantly consist of characters from a single block. Proceed with caution, as this may affect the reliability of the analysis."
+            f"The dominant Unicode block '{dominant_block}' comprises only {dominant_percentage:.1%} of the total "
+            f"character count. This is unusual, as most texts predominantly consist of characters from "
+            f"a single block. Proceed with caution, as this may affect normalization reliability."
         )
     return dominant_block
 
 
-def apply_dominant_script_strategy(replacer, text: str, **kwargs):
+def apply_dominant_script_strategy(replacer, text: str, **kwargs) -> str:
     """
-    Normalize text based on the dominant script in the text.
-
+    Normalize text based on the dominant Unicode script detected in the input.
+    
+    This function first identifies the dominant script in the text and then applies
+    a normalization strategy using character mappings appropriate for that script.
+    
     Args:
-        replacer: Instance of HomoglyphReplacer.
-        text (str): Text to normalize.
+        replacer: Instance of HomoglyphReplacer that provides normalization mappings.
+        text (str): The input text to normalize.
+        **kwargs: Additional keyword arguments to pass to the normalization map generator.
+            Commonly used kwargs include:
+            - category (str): Unicode category to filter by.
+            - preserve_case (bool): Whether to preserve character case during normalization.
 
     Returns:
-        str: Normalized text.
+        str: The normalized text with homoglyphs replaced according to the dominant script.
+        
+    Raises:
+        ValueError: If the text is empty or the replacer is not properly initialized.
+        
+    Note:
+        This strategy is most effective for texts predominantly written in a single script.
     """
+    if not text:
+        logging.warning("Empty text provided for normalization")
+        return ""
+        
+    if not replacer:
+        raise ValueError("No replacer provided for normalization")
+        
     dominant_script = detect_dominant_script(text)
+    
+    if dominant_script == "Unknown":
+        logging.warning("Unable to determine dominant script, normalization may be suboptimal")
+        
     normalization_map = replacer.get_normalization_map_for_script_block_and_category(
         script=dominant_script, **kwargs
     )
+    
+    if not normalization_map:
+        logging.warning(f"No normalization map available for script '{dominant_script}'")
+        return text
+        
     return text.translate(str.maketrans(normalization_map))
 
 
-def apply_dominant_script_and_block_strategy(replacer, text: str, **kwargs):
+def apply_dominant_script_and_block_strategy(replacer, text: str, **kwargs) -> str:
     """
-    Normalize text based on the dominant script and block in the text.
-
+    Normalize text based on both the dominant Unicode script and block detected in the input.
+    
+    This function identifies both the dominant script and Unicode block in the text and then applies
+    a normalization strategy using character mappings appropriate for that specific script-block combination.
+    This is more precise than using just the script or just the block alone.
+    
     Args:
-        replacer: Instance of HomoglyphReplacer.
-        text (str): Text to normalize.
+        replacer: Instance of HomoglyphReplacer that provides normalization mappings.
+        text (str): The input text to normalize.
+        **kwargs: Additional keyword arguments to pass to the normalization map generator.
+            Commonly used kwargs include:
+            - category (str): Unicode category to filter by.
+            - preserve_case (bool): Whether to preserve character case during normalization.
 
     Returns:
-        str: Normalized text.
+        str: The normalized text with homoglyphs replaced according to the dominant script and block.
+        
+    Raises:
+        ValueError: If the text is empty or the replacer is not properly initialized.
+        
+    Note:
+        This strategy is more specific than just using script detection alone and may provide 
+        better normalization for mixed-script texts where specific blocks are important.
     """
+    if not text:
+        logging.warning("Empty text provided for normalization")
+        return ""
+        
+    if not replacer:
+        raise ValueError("No replacer provided for normalization")
+    
     dominant_script = detect_dominant_script(text)
     dominant_block = detect_dominant_block(text)
+    
+    if dominant_script == "Unknown" or dominant_block == "Unknown":
+        logging.warning("Unable to determine dominant script/block, normalization may be suboptimal")
+    
     normalization_map = replacer.get_normalization_map_for_script_block_and_category(
         script=dominant_script, block=dominant_block, **kwargs
     )
+    
+    if not normalization_map:
+        logging.warning(f"No normalization map available for script '{dominant_script}' and block '{dominant_block}'")
+        return text
+        
     return text.translate(str.maketrans(normalization_map))
 
 
@@ -91,17 +235,36 @@ def apply_local_context_strategy(
     N: int = 10,
 ) -> str:
     """
-    Translate the text using the provided mapping, but also trying to maximize context matches (i.e. casing, etc.). We keep a sliding window and choose the best match for each character that matches most of the properties of the N characters in the window.
-
+    Normalize text using local character context to choose optimal homoglyph replacements.
+    
+    This advanced normalization strategy analyzes the surrounding characters (context window)
+    of each target character and selects replacement homoglyphs that best match the Unicode 
+    properties of the surrounding text. This preserves visual and semantic coherence by 
+    ensuring that replacement characters have similar properties to their context.
+    
     Args:
-        text (str): Text to translate.
-        mapping (Mapping[str, List[str]]): Mapping of characters to their replacements.
-        context (Optional[Mapping[str, str]]): Context for translation.
-
+        text (str): The input text to normalize.
+        normalization_map (Mapping[str, List[str]]): A mapping from original characters to 
+            their possible homoglyph replacements.
+        N (int, optional): The size of the context window to analyze around each character.
+            Defaults to 10 characters (5 before and 5 after the target character).
+    
     Returns:
-        str: Translated text.
+        str: The normalized text with homoglyphs replaced according to local context.
+        
+    Note:
+        This strategy is computationally more intensive than simple mapping strategies but
+        produces more natural-looking results that preserve the visual consistency of the text.
     """
-
+    if not text:
+        logging.warning("Empty text provided for normalization")
+        return ""
+        
+    if not normalization_map:
+        logging.warning("Empty normalization map provided")
+        return text
+        
+    # Dictionary of Unicode property extraction functions
     PROPERTY_FNS = {
         "script": unicodedataplus.script,
         "block": unicodedataplus.block,
@@ -113,57 +276,71 @@ def apply_local_context_strategy(
         "mirrored": unicodedata.mirrored,
     }
 
-    # Do not use a translation table here - instead, process the text character by character keeping track of all the properties of the characters in the window
+    # Process text character by character, analyzing context windows
     replaced_text = ""
     for i, char in enumerate(text):
         # Check if the character is in the mapping
         if char in normalization_map:
-            # Now, we have a set of possibilities - the set of homoglyphs for this character
+            # Get all possible homoglyph replacements including the original
             possible_chars = [char] + normalization_map[char]
-            # We need to check the context - we will use a sliding window of size N
-            # Adjust the context window to always have 10 characters, even at the start or end
-            # For char i, we should have i-4 to i + 4
-            # To ensure that we always have 10 characters, allow to go out of bounds (i.e. negative indices)
+            
+            # Define the context window around the current character
             start = max(0, i - N // 2)
             end = min(len(text), i + N // 2 + 1)
             context_window = text[start:end]
-            # If the context window is smaller than N, we need to pad it
-            if start == 0:
-                context_window = text[:N]
-            elif end == len(text):
-                context_window = text[-N:]
-            else:
-                pass  # Nothing to do - we have a full window
-
-            # Get the properties of the characters in the context window
-            properties = {
-                prop: [PROPERTY_FNS[prop](c) for c in context_window]
-                for prop in PROPERTY_FNS
-            }
-            # Now, we need to find the character that matches the most properties of the characters in the context window
-            scores = []  # List to store scores for each possible character
-            for possible_char in possible_chars:
-                score = sum(
-                    PROPERTY_FNS[prop](possible_char) == value
-                    for prop, values in properties.items()
-                    for value in values
-                )
-                scores.append((possible_char, score))
-            # Sort the list by score in descending order and pick the best character
-            best_char, best_score = max(scores, key=lambda x: x[1])
-            # If there's a tie in different characters, log a warning
-            if len([s for s in scores if s[1] == best_score]) > 1:
-                logging.warning(
-                    f"Found a tie for the best character for '{char}' (at index {i}) in context '{context_window}': {scores}. Using the first one."
-                )
-            # If we found a character that matches the properties, we use it
-            if best_char:
-                replaced_text += best_char
-            else:
-                # If we didn't find a character that matches the properties, we keep the original character
+            
+            # Ensure we have a sufficiently sized window 
+            if len(context_window) < min(N, len(text)):
+                if start == 0:
+                    context_window = text[:min(N, len(text))]
+                elif end == len(text):
+                    context_window = text[-min(N, len(text)):]
+            
+            # Extract Unicode properties from the context window
+            try:
+                properties = {
+                    prop: [PROPERTY_FNS[prop](c) for c in context_window]
+                    for prop in PROPERTY_FNS
+                }
+            except Exception as e:
+                logging.error(f"Error extracting Unicode properties: {e}")
                 replaced_text += char
-        # If the character is not in the mapping, we keep it as is
+                continue
+                
+            # Calculate property matching scores for each possible replacement
+            scores = []
+            for possible_char in possible_chars:
+                try:
+                    # Count how many property values the replacement character matches in the context
+                    score = sum(
+                        PROPERTY_FNS[prop](possible_char) == value
+                        for prop, values in properties.items()
+                        for value in values
+                    )
+                    scores.append((possible_char, score))
+                except Exception as e:
+                    logging.error(f"Error calculating score for '{possible_char}': {e}")
+                    scores.append((possible_char, 0))  # Assign lowest score on error
+            
+            if not scores:
+                replaced_text += char
+                continue
+                
+            # Select the best-scoring replacement
+            best_char, best_score = max(scores, key=lambda x: x[1])
+            
+            # Log a warning if multiple characters tie for the best score
+            ties = [s[0] for s in scores if s[1] == best_score]
+            if len(ties) > 1 and len(set(ties)) > 1:  # More than one unique character with best score
+                if logging.getLogger().isEnabledFor(logging.DEBUG):
+                    logging.debug(
+                        f"Found a tie for the best character for '{char}' at index {i}. "
+                        f"Options: {ties}. Using '{best_char}'."
+                    )
+            
+            replaced_text += best_char
         else:
+            # If the character is not in the mapping, keep it unchanged
             replaced_text += char
 
     return replaced_text
@@ -176,177 +353,178 @@ def apply_tokenizer_strategy(
     LONGEST_TOKEN_WEIGHT: float = 0.3,
     NUM_POSSIBLE_TOKENS_WEIGHT: float = 0.2,
     NUM_TOKENS_CONTAINING_CHAR_WEIGHT: float = 0.1,
+    tokenizer_name: str = "bigscience/bloom",
     **kwargs,
-):
+) -> str:
     """
-    Normalize text using a tokenizer strategy.
-
+    Normalize text by choosing homoglyphs based on tokenizer vocabulary analysis.
+    
+    This strategy uses tokenizer-based heuristics to select homoglyph replacements
+    that would result in more natural tokenization patterns. It analyzes how each 
+    potential homoglyph fits within the tokenizer's vocabulary and scores replacements
+    based on multiple weighted criteria.
+    
     Args:
-        text (str): Text to normalize.
+        text (str): The input text to normalize.
+        mapping (Mapping[str, List[str]]): A mapping from original characters to 
+            their possible homoglyph replacements.
+        LONGEST_START_WEIGHT (float, optional): Weight for prioritizing tokens with 
+            longer starting sequences. Defaults to 0.4.
+        LONGEST_TOKEN_WEIGHT (float, optional): Weight for prioritizing longer tokens. 
+            Defaults to 0.3.
+        NUM_POSSIBLE_TOKENS_WEIGHT (float, optional): Weight for prioritizing characters 
+            that appear in more tokens. Defaults to 0.2.
+        NUM_TOKENS_CONTAINING_CHAR_WEIGHT (float, optional): Weight for prioritizing 
+            characters that appear in more possible token contexts. Defaults to 0.1.
+        tokenizer_name (str, optional): The name/path of the HuggingFace tokenizer to use. 
+            Defaults to "bigscience/bloom".
+        **kwargs: Additional keyword arguments.
 
     Returns:
-        str: Normalized text.
+        str: The normalized text optimized for the specified tokenizer.
+        
+    Raises:
+        ImportError: If the transformers library is not installed.
+        RuntimeError: If tokenizer loading fails.
+        
+    Note:
+        This strategy requires the transformers library and an internet connection
+        to download the tokenizer model (if not cached locally).
     """
-    from transformers import AutoTokenizer, PreTrainedTokenizer
+    try:
+        from transformers import AutoTokenizer, PreTrainedTokenizer
+    except ImportError:
+        logging.error("This normalization strategy requires the transformers library. Install it with: pip install transformers")
+        raise ImportError("Missing required dependency: transformers")
 
-    # Load a tokenizer that supports a lot of languages
-    tokenizer: PreTrainedTokenizer = AutoTokenizer.from_pretrained(
-        # "MaLA-LM/mala-500-10b-v1"
-        # "bigscience/bloom"
-        "google/gemma-3-1b-it"
-    )
+    if not text:
+        logging.warning("Empty text provided for normalization")
+        return ""
 
-    vocab = tokenizer.get_vocab().keys()
+    if not mapping:
+        logging.warning("Empty mapping provided for normalization")
+        return text
 
-    # Order the vocabulary by length
+    # Load tokenizer with error handling
+    try:
+        logging.info(f"Loading tokenizer: {tokenizer_name}")
+        tokenizer: PreTrainedTokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
+    except Exception as e:
+        logging.error(f"Failed to load tokenizer '{tokenizer_name}': {e}")
+        raise RuntimeError(f"Failed to load tokenizer: {e}")
+
+    # Get vocabulary and sort by length (longest tokens first)
+    vocab = list(tokenizer.get_vocab().keys())
     vocab = sorted(vocab, key=len, reverse=True)
 
-    # For all of the tokens starting with the space prefix, remove the prefix
-    # i.e. if the token is "_hello", we want to keep only "hello"
-
-    vocab = [token[1:] if token.startswith("▁") else token for token in vocab]
+    # Remove special prefix (varies by tokenizer type)
+    if any(token.startswith("▁") for token in vocab):
+        # BLOOM, GPT-2, and other BPE-based tokenizers use ▁
+        vocab = [token[1:] if token.startswith("▁") else token for token in vocab]
+    elif any(token.startswith("##") for token in vocab):
+        # BERT-style tokenizers use ##
+        vocab = [token[2:] if token.startswith("##") else token for token in vocab]
 
     normalized_text = ""
 
-    # To select the correct characters, analyze each at a time
+    # Process each character with a progress bar
     for i, char in tqdm.tqdm(enumerate(text), desc="Normalizing text", total=len(text)):
-        # Check if the character is in the mapping
+        # Check if the character is in mapping
         if char in mapping:
-            # We have a set of possibilities - the set of homoglyphs for this character
+            # Get possible homoglyphs including original character
             possible_chars = [char] + mapping[char]
 
-            # Filter the vocabulary to only include tokens that contain the possible character
-            possible_token_starts = {
-                char: [
-                    # Store only up to the place where the character is in the token (highest index)
-                    # i.e. if the character is in the middle of the token, we want to keep only the left side
-                    (
-                        token[: token.rindex(char)],
-                        len(token),
-                        token,  # For debugging purposes, keep the original token
-                    )  # Keep the original token because it'll be useful later
-                    for token in vocab
-                    if char in token
-                ]
-                for char in possible_chars
-            }
+            # Find tokens in vocabulary that contain each possible character
+            possible_token_starts = {}
+            for possible_char in possible_chars:
+                try:
+                    # Find tokens containing this character and extract the prefix
+                    tokens_with_char = [
+                        (
+                            token[: token.rindex(possible_char)],  # Prefix up to the character
+                            len(token),  # Total token length
+                            token,  # Original token (for debugging)
+                        )
+                        for token in vocab
+                        if possible_char in token
+                    ]
+                    possible_token_starts[possible_char] = tokens_with_char
+                except Exception as e:
+                    logging.debug(f"Error processing character '{possible_char}': {e}")
+                    possible_token_starts[possible_char] = []
 
-            # Now, we want to find the biggest possible token that can be formed with the homoglyphs
-            # i.e. the biggest token that is in the vocabulary
-            # Go over all of the possible tokens and discard all of the ones that could not be formed with the text we have
-            possible_token_starts = {
-                char: [
+            # Filter to tokens whose prefixes match the end of our normalized text so far
+            for char_key in list(possible_token_starts.keys()):
+                possible_token_starts[char_key] = [
                     token_tuple
-                    for token_tuple in tokens
-                    # Is the start of the token in the final part of the normalized text?
+                    for token_tuple in possible_token_starts[char_key]
                     if normalized_text.endswith(token_tuple[0])
                 ]
-                for char, tokens in possible_token_starts.items()
-            }
 
-            # Remove all candidates that don't have a single token
+            # Remove characters with no valid token matches
             possible_token_starts = {
-                char: v for char, v in possible_token_starts.items() if len(v) > 0
+                char_key: tokens 
+                for char_key, tokens in possible_token_starts.items() 
+                if tokens
             }
 
             if not possible_token_starts:
-                # If there are no possible tokens, we keep the original character
-                logging.warning(
-                    f"No possible tokens found for character '{char}' (at index {i}) in context '{text}'. Keeping the original character."
-                )
+                # No valid matches found, keep original character
+                if logging.getLogger().isEnabledFor(logging.DEBUG):
+                    logging.debug(f"No valid token matches for '{char}' at index {i}, keeping original")
                 normalized_text += char
                 continue
 
-            # Calculate scores for each criterion and aggregate them with weights
-            scores = {}
+            # Calculate scores for each criterion
             individual_scores = {}
-            normalized_individual_scores = {}
-
-            for char, tokens in possible_token_starts.items():
-                # Criterion 1: Average length of starts
+            for char_key, tokens in possible_token_starts.items():
+                # Calculate individual metrics
                 avg_start_length = sum(len(token[0]) for token in tokens) / len(tokens)
-
-                # Criterion 2: Average token length
                 avg_token_length = sum(token[1] for token in tokens) / len(tokens)
-
-                # Criterion 3: The one that has the largest number of possible tokens
-                num_possible_tokens_score = len(tokens)
-
-                # Criterion 4: Number of tokens containing the character (largest list of possible starts)
-                num_tokens_containing_char = len(possible_token_starts[char])
-
-                # Store individual scores
-                individual_scores[char] = {
+                num_possible_tokens = len(tokens)
+                num_tokens_containing_char = len(tokens)
+                
+                individual_scores[char_key] = {
                     "avg_start_length": avg_start_length,
                     "avg_token_length": avg_token_length,
-                    "num_possible_tokens_score": num_possible_tokens_score,
+                    "num_possible_tokens_score": num_possible_tokens,
                     "num_tokens_containing_char": num_tokens_containing_char,
                 }
 
-            # Calculate the maximum values for normalization after individual scores are computed
-            max_avg_start_length = (
-                max(score["avg_start_length"] for score in individual_scores.values())
-                or 1
-            )  # Avoid division by zero
-            max_avg_token_length = (
-                max(score["avg_token_length"] for score in individual_scores.values())
-                or 1
-            )  # Avoid division by zero
-            max_num_possible_tokens = (
-                max(
-                    score["num_possible_tokens_score"]
-                    for score in individual_scores.values()
-                )
-                or 1
-            )  # Avoid division by zero
-            max_num_tokens_containing_char = (
-                max(
-                    score["num_tokens_containing_char"]
-                    for score in individual_scores.values()
-                )
-                or 1
-            )  # Avoid division by zero
-
-            for char, scores_dict in individual_scores.items():
-                # Normalize individual scores
-                longest_start_score = (
-                    scores_dict["avg_start_length"] / max_avg_start_length
-                )
-                longest_token_score = (
-                    scores_dict["avg_token_length"] / max_avg_token_length
-                )
-                num_possible_tokens_score = (
-                    scores_dict["num_possible_tokens_score"] / max_num_possible_tokens
-                )
-                num_tokens_containing_char = (
-                    scores_dict["num_tokens_containing_char"]
-                    / max_num_tokens_containing_char
-                )
-
-                # Store normalized individual scores
-                normalized_individual_scores[char] = {
-                    "longest_start_score": longest_start_score,
-                    "longest_token_score": longest_token_score,
-                    "num_possible_tokens_score": num_possible_tokens_score,
-                    "num_tokens_containing_char": num_tokens_containing_char,
+            # Find max values for normalization (with safety against division by zero)
+            max_vals = {
+                "avg_start_length": max((s["avg_start_length"] for s in individual_scores.values()), default=1) or 1,
+                "avg_token_length": max((s["avg_token_length"] for s in individual_scores.values()), default=1) or 1,
+                "num_possible_tokens_score": max((s["num_possible_tokens_score"] for s in individual_scores.values()), default=1) or 1,
+                "num_tokens_containing_char": max((s["num_tokens_containing_char"] for s in individual_scores.values()), default=1) or 1
+            }
+            
+            # Calculate normalized and weighted scores
+            final_scores = {}
+            for char_key, scores_dict in individual_scores.items():
+                # Normalize scores to 0-1 range
+                norm_scores = {
+                    "longest_start": scores_dict["avg_start_length"] / max_vals["avg_start_length"],
+                    "longest_token": scores_dict["avg_token_length"] / max_vals["avg_token_length"],
+                    "num_tokens": scores_dict["num_possible_tokens_score"] / max_vals["num_possible_tokens_score"],
+                    "token_contexts": scores_dict["num_tokens_containing_char"] / max_vals["num_tokens_containing_char"]
                 }
-
-                # Aggregate scores with parameterized weights
-                scores[char] = (
-                    LONGEST_START_WEIGHT * longest_start_score
-                    + LONGEST_TOKEN_WEIGHT * longest_token_score
-                    + NUM_POSSIBLE_TOKENS_WEIGHT * num_possible_tokens_score
-                    + NUM_TOKENS_CONTAINING_CHAR_WEIGHT * num_tokens_containing_char
+                
+                # Calculate weighted score
+                final_scores[char_key] = (
+                    LONGEST_START_WEIGHT * norm_scores["longest_start"]
+                    + LONGEST_TOKEN_WEIGHT * norm_scores["longest_token"]
+                    + NUM_POSSIBLE_TOKENS_WEIGHT * norm_scores["num_tokens"]
+                    + NUM_TOKENS_CONTAINING_CHAR_WEIGHT * norm_scores["token_contexts"]
                 )
 
-            # Select the character with the highest aggregated score
-            best_char = max(scores, key=scores.get)
+            # Select best character and append to result
+            best_char = max(final_scores, key=final_scores.get)
             normalized_text += best_char
         else:
-            # If the character is not in the mapping, we keep it as is
+            # Character not in mapping, keep as is
             normalized_text += char
 
-    # Join the normalized tokens back into a single string
     return normalized_text
 
 
@@ -354,18 +532,160 @@ def apply_tokenizer_strategy(
 def apply_language_model_strategy(
     text: str,
     mapping: Mapping[str, List[str]],
-    language_model: transformers.PreTrainedModel,
-    tokenizer: transformers.PreTrainedTokenizer,
+    language_model: transformers.PreTrainedModel = None,
+    tokenizer: transformers.PreTrainedTokenizer = None,
+    model_name: str = "bert-base-multilingual-cased",
+    batch_size: int = 8,
+    max_length: int = 512,
+    device: str = None,
     **kwargs,
-):
+) -> str:
     """
-    Normalize text using a language model strategy.
-
+    Normalize text using a language model to select the most contextually appropriate homoglyph replacements.
+    
+    This advanced strategy uses a masked language model to predict the most likely character at each position
+    where a homoglyph replacement is possible. It produces text that is semantically coherent according to the
+    language model's understanding of natural language.
+    
     Args:
-        text (str): Text to normalize.
-
+        text (str): The input text to normalize.
+        mapping (Mapping[str, List[str]]): A mapping from original characters to 
+            their possible homoglyph replacements.
+        language_model (transformers.PreTrainedModel, optional): A pre-loaded masked language model.
+            If not provided, one will be loaded using the model_name parameter.
+        tokenizer (transformers.PreTrainedTokenizer, optional): A pre-loaded tokenizer matching the model.
+            If not provided, one will be loaded using the model_name parameter.
+        model_name (str, optional): The HuggingFace model name to load if language_model and tokenizer
+            are not provided. Defaults to "bert-base-multilingual-cased".
+        batch_size (int, optional): Number of text segments to process in each batch. Defaults to 8.
+        max_length (int, optional): Maximum length of text segments. Longer text will be split.
+            Defaults to 512.
+        device (str, optional): Device to run the model on ('cuda', 'cpu', etc.). 
+            Defaults to cuda if available, otherwise cpu.
+        **kwargs: Additional keyword arguments passed to the model.
+            
     Returns:
-        str: Normalized text.
+        str: The normalized text with homoglyphs selected based on language model predictions.
+        
+    Raises:
+        ImportError: If required dependencies are not installed.
+        RuntimeError: If model loading fails or other runtime errors occur.
+        
+    Note:
+        This strategy is computationally intensive but produces high-quality results that
+        maintain the semantic coherence of the original text.
     """
-    normalized_text = text
-    return normalized_text
+    try:
+        import torch
+        from transformers import AutoTokenizer, AutoModelForMaskedLM
+    except ImportError:
+        logging.error("This normalization strategy requires the transformers and torch libraries. "
+                     "Install them with: pip install transformers torch")
+        raise ImportError("Missing required dependencies: transformers, torch")
+
+    if not text:
+        logging.warning("Empty text provided for normalization")
+        return ""
+
+    if not mapping:
+        logging.warning("Empty mapping provided for normalization")
+        return text
+        
+    # Set default device if not specified
+    if device is None:
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+    
+    # Load model and tokenizer if not provided
+    if language_model is None or tokenizer is None:
+        try:
+            logging.info(f"Loading model and tokenizer: {model_name}")
+            tokenizer = AutoTokenizer.from_pretrained(model_name)
+            language_model = AutoModelForMaskedLM.from_pretrained(model_name)
+            language_model.to(device)
+            language_model.eval()  # Set to evaluation mode
+        except Exception as e:
+            logging.error(f"Failed to load model or tokenizer '{model_name}': {e}")
+            raise RuntimeError(f"Failed to load model or tokenizer: {e}")
+
+    # Get mask token and ID
+    mask_token = tokenizer.mask_token
+    mask_token_id = tokenizer.mask_token_id
+    
+    if mask_token is None or mask_token_id is None:
+        logging.error(f"Model {model_name} does not support masked language modeling")
+        raise RuntimeError(f"Model {model_name} does not support masked language modeling")
+    
+    # Split long text into manageable segments
+    normalized_text_segments = []
+    
+    # Process text in segments to handle long documents
+    for i in range(0, len(text), max_length):
+        segment = text[i:i+max_length]
+        
+        # Find positions of characters that have homoglyph alternatives
+        positions_to_mask = [(pos, char) for pos, char in enumerate(segment) if char in mapping]
+        
+        if not positions_to_mask:
+            # No characters to replace in this segment
+            normalized_text_segments.append(segment)
+            continue
+        
+        # Process in batches for character positions
+        normalized_segment = list(segment)  # Convert to list for character-by-character replacement
+        
+        for batch_start in range(0, len(positions_to_mask), batch_size):
+            batch_positions = positions_to_mask[batch_start:batch_start+batch_size]
+            
+            # Create masked versions for this batch
+            masked_inputs = []
+            for pos, char in batch_positions:
+                masked_segment = list(segment)  # Create a new copy for each position
+                masked_segment[pos] = mask_token
+                masked_inputs.append("".join(masked_segment))
+            
+            # Tokenize and encode
+            inputs = tokenizer(masked_inputs, return_tensors="pt", padding=True, truncation=True)
+            inputs = {k: v.to(device) for k, v in inputs.items()}
+            
+            # Run model inference
+            with torch.no_grad():
+                outputs = language_model(**inputs)
+                
+            # Process each position in the batch
+            for batch_idx, (pos, original_char) in enumerate(batch_positions):
+                # Get the token index of the masked position
+                # This is more complex than it seems due to tokenization
+                token_ids = inputs.input_ids[batch_idx].tolist()
+                mask_token_index = token_ids.index(mask_token_id)
+                
+                # Get predictions for the masked position
+                logits = outputs.logits[batch_idx, mask_token_index]
+                
+                # Filter to only consider the original character and its homoglyphs
+                possible_chars = [original_char] + mapping[original_char]
+                possible_token_ids = []
+                
+                # Map characters to token IDs (may be multi-token)
+                for char in possible_chars:
+                    char_tokens = tokenizer.encode(char, add_special_tokens=False)
+                    if len(char_tokens) == 1:  # Only consider single-token characters for simplicity
+                        possible_token_ids.append((char, char_tokens[0]))
+                
+                if not possible_token_ids:
+                    # Fallback to original if no single-token mappings found
+                    normalized_segment[pos] = original_char
+                    continue
+                
+                # Get probability scores for possible replacements
+                scores = {}
+                for char, token_id in possible_token_ids:
+                    scores[char] = logits[token_id].item()
+                
+                # Select the highest scoring character
+                best_char = max(scores, key=scores.get)
+                normalized_segment[pos] = best_char
+        
+        normalized_text_segments.append("".join(normalized_segment))
+    
+    # Join all processed segments
+    return "".join(normalized_text_segments)
