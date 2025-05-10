@@ -7,11 +7,25 @@ This is a Python library to perform homoglyph-based attacks on text.
 
 We also include the experiments supplementing the paper "SilverSpeak: Evading AI-Generated Text Detectors using Homoglyphs".
 
+![SilverSpeak Logo](docs/source/_static/silverspeak_logo_editable.svg)
+
 ## Installation
 You can install this package from PyPI by running:
 ```
 pip install silverspeak
 ```
+
+## Documentation
+
+For full documentation, visit [the docs](http://acmcmc.me/silverspeak/).
+
+### Using the Logo
+
+The project includes an editable SVG logo (`silverspeak_logo_editable.svg`) that is used in the documentation. If you're contributing to the documentation:
+
+1. The logo is automatically included in the documentation build
+2. You can refer to it in RST files using: `.. image:: _static/silverspeak_logo_editable.svg`
+3. To modify the logo, edit the SVG file directly using a vector graphics editor like Inkscape
 
 ## Usage example
 ```python

@@ -3,6 +3,12 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
+.. image:: _static/silverspeak_logo_editable.svg
+   :width: 300px
+   :align: center
+   :alt: SilverSpeak Logo
+   :class: center-img
+
 Welcome to SilverSpeak's documentation!
 =======================================
 

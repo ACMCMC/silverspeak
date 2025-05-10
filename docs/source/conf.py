@@ -40,3 +40,16 @@ language = 'en'
 
 html_theme = 'sphinx_rtd_theme'
 html_static_path = ['_static']
+
+# Add custom CSS file
+html_css_files = ['custom.css']
+
+# Logo configuration
+html_logo = '_static/silverspeak_logo_editable.svg'
+html_theme_options = {
+    'logo_only': False,
+    'display_version': True,
+}
+
+# Favicon
+html_favicon = '_static/silverspeak_logo_editable.svg'

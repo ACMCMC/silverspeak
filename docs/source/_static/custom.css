@@ -1,0 +1,31 @@
+/* Custom CSS for SilverSpeak documentation */
+
+/* Center logo and add some margin */
+.center-img {
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+    margin-bottom: 2rem;
+}
+
+/* Main content styling */
+.rst-content {
+    max-width: 1000px;
+    margin: 0 auto;
+}
+
+/* Better heading styling */
+h1, h2, h3, h4, h5, h6 {
+    color: #2c3e50;
+    font-weight: 700;
+}
+
+/* Add a bit of silver color for the SilverSpeak theme */
+.wy-side-nav-search {
+    background-color: #8c9294;
+}
+
+/* Style the version number */
+.version {
+    color: rgba(255, 255, 255, 0.8) !important;
+}
