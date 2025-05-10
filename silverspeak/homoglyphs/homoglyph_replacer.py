@@ -36,8 +36,8 @@ from .script_block_category_utils import (
     is_script_and_block,
 )
 
-# Import normalization strategies at module level to avoid circular imports
-from .normalization_strategies import (
+# Import normalization strategies from the normalization package
+from .normalization import (
     apply_dominant_script_and_block_strategy,
     apply_dominant_script_strategy,
     apply_language_model_strategy, 

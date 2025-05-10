@@ -5,9 +5,7 @@ from typing import Dict, List
 import unicodedata
 import unicodedataplus
 
-from silverspeak.homoglyphs.normalization_strategies import (
-    detect_dominant_script,
-    detect_dominant_block,
+from silverspeak.homoglyphs.normalization import (
     apply_dominant_script_strategy,
     apply_dominant_script_and_block_strategy,
     apply_local_context_strategy,
@@ -15,6 +13,10 @@ from silverspeak.homoglyphs.normalization_strategies import (
     apply_language_model_strategy,
     configure_logging,
     VALID_LOG_LEVELS,
+)
+from silverspeak.homoglyphs.script_block_category_utils import (
+    detect_dominant_script,
+    detect_dominant_block,
 )
 
 
@@ -153,9 +155,8 @@ class TestDominantScriptAndBlockStrategy:
             apply_dominant_script_and_block_strategy(None, "test")
     
     def test_apply_dominant_script_and_block_strategy_unknown(self, mock_replacer):
-        """Test apply_dominant_script_and_block_strategy with unknown script/block."""
-        with unittest.mock.patch("silverspeak.homoglyphs.normalization_strategies.detect_dominant_script") as mock_script:
-            with unittest.mock.patch("silverspeak.homoglyphs.normalization_strategies.detect_dominant_block") as mock_block:
+        """Test apply_dominant_script_and_block_strategy with unknown script/block."""        with unittest.mock.patch("silverspeak.homoglyphs.script_block_category_utils.detect_dominant_script") as mock_script:
+            with unittest.mock.patch("silverspeak.homoglyphs.script_block_category_utils.detect_dominant_block") as mock_block:
                 mock_script.return_value = "Unknown"
                 mock_block.return_value = "Unknown"
                 

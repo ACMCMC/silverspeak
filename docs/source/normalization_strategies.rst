@@ -1,7 +1,7 @@
 Normalization Strategies
 ========================
 
-The `normalization_strategies.py` module provides a suite of methods to normalize text by leveraging various linguistic and contextual properties. These strategies are designed to handle homoglyphs and other text normalization challenges effectively. Below is a detailed explanation of each strategy:
+The `normalization` package provides a suite of methods to normalize text by leveraging various linguistic and contextual properties. These strategies are designed to handle homoglyphs and other text normalization challenges effectively. Below is a detailed explanation of each strategy:
 
 1. **Dominant Script Strategy**:
 
@@ -9,7 +9,7 @@ The `normalization_strategies.py` module provides a suite of methods to normaliz
 
    .. code-block:: python
 
-      from silverspeak.homoglyphs.normalization_strategies import apply_dominant_script_strategy
+      from silverspeak.homoglyphs.normalization import apply_dominant_script_strategy
 
       normalized_text = apply_dominant_script_strategy(replacer, text="example text")
       print(normalized_text)
@@ -20,7 +20,7 @@ The `normalization_strategies.py` module provides a suite of methods to normaliz
 
    .. code-block:: python
 
-      from silverspeak.homoglyphs.normalization_strategies import apply_dominant_script_and_block_strategy
+      from silverspeak.homoglyphs.normalization import apply_dominant_script_and_block_strategy
 
       normalized_text = apply_dominant_script_and_block_strategy(replacer, text="example text")
       print(normalized_text)
@@ -31,7 +31,7 @@ The `normalization_strategies.py` module provides a suite of methods to normaliz
 
    .. code-block:: python
 
-      from silverspeak.homoglyphs.normalization_strategies import apply_local_context_strategy
+      from silverspeak.homoglyphs.normalization import apply_local_context_strategy
 
       normalized_text = apply_local_context_strategy(text="example text", normalization_map={})
       print(normalized_text)
@@ -42,7 +42,7 @@ The `normalization_strategies.py` module provides a suite of methods to normaliz
 
    .. code-block:: python
 
-      from silverspeak.homoglyphs.normalization_strategies import apply_tokenizer_strategy
+      from silverspeak.homoglyphs.normalization import apply_tokenizer_strategy
 
       normalized_text = apply_tokenizer_strategy(text="example text", mapping={})
       print(normalized_text)
@@ -53,7 +53,7 @@ The `normalization_strategies.py` module provides a suite of methods to normaliz
 
    .. code-block:: python
 
-      from silverspeak.homoglyphs.normalization_strategies import apply_language_model_strategy
+      from silverspeak.homoglyphs.normalization import apply_language_model_strategy
       from transformers import AutoTokenizer, AutoModelForMaskedLM
 
       tokenizer = AutoTokenizer.from_pretrained("bert-base-multilingual-cased")
