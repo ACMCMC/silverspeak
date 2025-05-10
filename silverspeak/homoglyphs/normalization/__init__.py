@@ -12,7 +12,6 @@ Available strategies:
 - Language model (uses ML models for context-aware replacement)
 
 Authors: Aldan Creo (ACMC) <os@acmc.fyi>
-Version: 1.0.0
 """
 
 # Import all strategy functions for backward compatibility

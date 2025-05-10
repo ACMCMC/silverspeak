@@ -5,7 +5,6 @@ This module provides enumerations and constants used throughout the SilverSpeak
 homoglyph detection and replacement system.
 
 Author: Aldan Creo (ACMC) <os@acmc.fyi>
-Version: 1.0.0
 License: See LICENSE file in the project root
 """
 

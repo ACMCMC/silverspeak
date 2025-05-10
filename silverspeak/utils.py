@@ -11,7 +11,6 @@ It includes functions for:
 - Loglikelihood calculations
 
 Author: Aldan Creo (ACMC) <os@acmc.fyi>
-Version: 1.0.0
 License: See LICENSE file in the project root
 """
 

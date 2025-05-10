@@ -5,7 +5,6 @@ This module provides a simple interface to normalize text by replacing homoglyph
 with their standard equivalents using various normalization strategies.
 
 Author: Aldan Creo (ACMC) <os@acmc.fyi>
-Version: 1.0.0
 License: See LICENSE file in the project root
 """
 

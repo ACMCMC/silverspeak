@@ -6,7 +6,6 @@ with their homoglyphs and normalizing text containing homoglyphs. The class supp
 normalization strategies and homoglyph types.
 
 Author: Aldan Creo (ACMC) <os@acmc.fyi>
-Version: 1.0.0
 License: See LICENSE file in the project root
 """
 

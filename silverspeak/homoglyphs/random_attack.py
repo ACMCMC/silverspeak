@@ -6,7 +6,6 @@ which can be used to create adversarial text samples that appear visually simila
 to the original but use different Unicode characters.
 
 Author: Aldan Creo (ACMC) <os@acmc.fyi>
-Version: 1.0.0
 License: See LICENSE file in the project root
 """
 

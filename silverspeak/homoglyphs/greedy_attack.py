@@ -7,7 +7,6 @@ Unlike random attack, this approach tries to replace as many characters as possi
 within the percentage constraint.
 
 Author: Aldan Creo (ACMC) <os@acmc.fyi>
-Version: 1.0.0
 License: See LICENSE file in the project root
 """
 

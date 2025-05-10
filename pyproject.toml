@@ -19,6 +19,7 @@ pandas = "^2.2.2"
 unicodedataplus = "^16.0.0.post1"
 transformers = "^4.51.3"
 torch = "^2.6.0"
+tomli = "^2.0.1"
 
 [tool.poetry.group.dev.dependencies]
 ipykernel = "^6.29.5"

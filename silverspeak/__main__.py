@@ -17,7 +17,6 @@ Example usage:
     python -m silverspeak normalize --strategy dominant-script --input input.txt --output output.txt
 
 Author: Aldan Creo (ACMC) <os@acmc.fyi>
-Version: 1.0.0
 License: See LICENSE file in the project root
 """
 
@@ -28,6 +27,7 @@ import sys
 from pathlib import Path
 from typing import List, Optional, TextIO, Union
 
+from silverspeak import __version__
 from silverspeak.homoglyphs.greedy_attack import greedy_attack
 from silverspeak.homoglyphs.normalize import normalize_text
 from silverspeak.homoglyphs.random_attack import random_attack
@@ -57,6 +57,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="SilverSpeak: A tool for text normalization and homoglyph manipulation"
     )
+    parser.add_argument('--version', action='version', version=f'SilverSpeak {__version__}')
 
     subparsers = parser.add_subparsers(dest="command", help="Command to run")
 
