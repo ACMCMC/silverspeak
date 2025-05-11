@@ -57,7 +57,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="SilverSpeak: A tool for text normalization and homoglyph manipulation"
     )
-    parser.add_argument('--version', action='version', version=f'SilverSpeak {__version__}')
+    parser.add_argument("--version", action="version", version=f"SilverSpeak {__version__}")
 
     subparsers = parser.add_subparsers(dest="command", help="Command to run")
 
@@ -164,10 +164,10 @@ def parse_homoglyph_types(types_str: str) -> List[TypesOfHomoglyphs]:
 def parse_normalization_strategy(strategy: str) -> NormalizationStrategies:
     """
     Parse normalization strategy string to the format expected by normalize_text.
-    
+
     Args:
         strategy: Strategy name from command line.
-    
+
     Returns:
         NormalizationStrategies: Normalized strategy enum value.
     """
@@ -176,9 +176,9 @@ def parse_normalization_strategy(strategy: str) -> NormalizationStrategies:
         "dominant-script-block": NormalizationStrategies.DOMINANT_SCRIPT_AND_BLOCK,
         "local-context": NormalizationStrategies.LOCAL_CONTEXT,
         "tokenization": NormalizationStrategies.TOKENIZATION,
-        "language-model": NormalizationStrategies.LANGUAGE_MODEL
+        "language-model": NormalizationStrategies.LANGUAGE_MODEL,
     }
-    
+
     return strategy_map.get(strategy, NormalizationStrategies.DOMINANT_SCRIPT)
 
 

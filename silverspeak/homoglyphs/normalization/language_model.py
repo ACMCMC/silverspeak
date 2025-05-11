@@ -91,10 +91,10 @@ def apply_language_model_strategy(
             logging.info(f"Loading model and tokenizer: {model_name}")
             tokenizer = AutoTokenizer.from_pretrained(model_name)
             language_model = AutoModelForMaskedLM.from_pretrained(model_name)
-            
+
             # At this point language_model is guaranteed to be not None if we reach here
             assert language_model is not None, "Model loading failed but did not raise an exception"
-            
+
             # Now we can safely use the methods - add type assertions for mypy
             assert hasattr(language_model, "to"), "Model does not have 'to' method"
             assert hasattr(language_model, "eval"), "Model does not have 'eval' method"
@@ -113,11 +113,11 @@ def apply_language_model_strategy(
         assert hasattr(language_model, "eval"), "Model does not have 'eval' method"
         language_model.to(device)
         language_model.eval()
-        
+
     # Ensure tokenizer is not None after loading attempt
     if tokenizer is None:
         raise RuntimeError("Tokenizer is None after loading attempt")
-        
+
     # Get mask token and ID
     mask_token = tokenizer.mask_token
     mask_token_id = tokenizer.mask_token_id
@@ -162,6 +162,7 @@ def apply_language_model_strategy(
             with torch.no_grad():
                 # Add a runtime type check to satisfy mypy
                 from typing import cast, Callable
+
                 model_callable = cast(Callable, language_model)
                 outputs = model_callable(**inputs)
 

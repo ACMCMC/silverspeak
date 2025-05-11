@@ -31,10 +31,10 @@ def normalize_text(
 ) -> str:
     """
     Normalize text by replacing homoglyphs with their standard equivalents.
-    
+
     This function provides a convenient interface to the HomoglyphReplacer's normalize method,
     creating a temporary HomoglyphReplacer instance with the specified parameters.
-    
+
     Args:
         text (str): The text to normalize.
         unicode_categories_to_replace (Set[str]): Unicode categories to replace.
@@ -47,33 +47,33 @@ def normalize_text(
             Defaults to False.
         strategy (NormalizationStrategies): The normalization strategy to use.
             Defaults to LOCAL_CONTEXT, which selects replacements based on surrounding characters.
-            
+
     Returns:
         str: The normalized text with homoglyphs replaced.
-        
+
     Raises:
         ValueError: If the text is None or invalid parameters are provided.
         NotImplementedError: If an unsupported normalization strategy is specified.
-        
+
     Example:
         ```python
         # Normalize text using the default local context strategy
         normalized_text = normalize_text("Hеllo wоrld")  # Contains Cyrillic 'е' and 'о'
-        
+
         # Normalize text using dominant script strategy
         from silverspeak.homoglyphs.utils import NormalizationStrategies
         normalized_text = normalize_text(
-            "Hеllo wоrld", 
+            "Hеllo wоrld",
             strategy=NormalizationStrategies.DOMINANT_SCRIPT
         )
         ```
     """
     if text is None:
         raise ValueError("Input text cannot be None")
-    
+
     if not text:
         return ""
-        
+
     try:
         replacer = HomoglyphReplacer(
             unicode_categories_to_replace=unicode_categories_to_replace,

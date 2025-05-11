@@ -53,9 +53,9 @@ def apply_tokenizer_strategy(
     # Default weights if not provided
     LONGEST_START_WEIGHT = kwargs.get("LONGEST_START_WEIGHT", 0.4)
     LONGEST_TOKEN_WEIGHT = kwargs.get("LONGEST_TOKEN_WEIGHT", 0.3)
-    NUM_POSSIBLE_TOKENS_WEIGHT = kwargs.get("NUM_POSSIBLE_TOKENS_WEIGHT", 0.2) 
+    NUM_POSSIBLE_TOKENS_WEIGHT = kwargs.get("NUM_POSSIBLE_TOKENS_WEIGHT", 0.2)
     NUM_TOKENS_CONTAINING_CHAR_WEIGHT = kwargs.get("NUM_TOKENS_CONTAINING_CHAR_WEIGHT", 0.1)
-    
+
     try:
         from transformers import AutoTokenizer, PreTrainedTokenizer
     except ImportError:
