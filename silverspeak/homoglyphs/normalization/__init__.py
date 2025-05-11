@@ -18,7 +18,7 @@ Authors: Aldan Creo (ACMC) <os@acmc.fyi>
 from .dominant_script import apply_dominant_script_and_block_strategy, apply_dominant_script_strategy
 from .language_model import apply_language_model_strategy
 from .local_context import apply_local_context_strategy
-from .logging import configure_logging, VALID_LOG_LEVELS
+from .logging import VALID_LOG_LEVELS, configure_logging
 from .tokenizer import apply_tokenizer_strategy
 
 # Expose all the functions at the package level

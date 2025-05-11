@@ -9,9 +9,9 @@ Author: Aldan Creo (ACMC) <os@acmc.fyi>
 
 import logging
 from typing import List, Mapping, Optional
-import transformers
 
 import torch
+import transformers
 
 logger = logging.getLogger(__name__)
 
@@ -161,7 +161,7 @@ def apply_language_model_strategy(
             # Run model inference
             with torch.no_grad():
                 # Add a runtime type check to satisfy mypy
-                from typing import cast, Callable
+                from typing import Callable, cast
 
                 model_callable = cast(Callable, language_model)
                 outputs = model_callable(**inputs)

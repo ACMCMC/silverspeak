@@ -23,6 +23,7 @@ except (ImportError, ModuleNotFoundError):
     # If package is not installed in a way that metadata is available
     # fallback to reading from pyproject.toml
     import os
+
     import tomli
 
     _package_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))

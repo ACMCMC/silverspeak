@@ -26,15 +26,6 @@ from silverspeak.homoglyphs.utils import (
     TypesOfHomoglyphs,
 )
 
-from .script_block_category_utils import (
-    detect_dominant_block,
-    detect_dominant_script,
-    get_block_counts,
-    get_script_counts,
-    is_category,
-    is_script_and_block,
-)
-
 # Import normalization strategies from the normalization package
 from .normalization import (
     apply_dominant_script_and_block_strategy,
@@ -42,6 +33,14 @@ from .normalization import (
     apply_language_model_strategy,
     apply_local_context_strategy,
     apply_tokenizer_strategy,
+)
+from .script_block_category_utils import (
+    detect_dominant_block,
+    detect_dominant_script,
+    get_block_counts,
+    get_script_counts,
+    is_category,
+    is_script_and_block,
 )
 
 logger = logging.getLogger(__name__)
