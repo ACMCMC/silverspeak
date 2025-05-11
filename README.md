@@ -2,6 +2,8 @@
 
 [![Full Test Workflow](https://github.com/ACMCMC/silverspeak/actions/workflows/full-test.yml/badge.svg)](https://github.com/ACMCMC/silverspeak/actions/workflows/full-test.yml) 👈 This should fail. It means that not all strategies work perfectly in every single test case, which is to be expected and means you need to choose your strategies wisely. Check [the docs](http://acmcmc.me/silverspeak/) for more context.
 
+[![Linting](https://github.com/ACMCMC/silverspeak/actions/workflows/linting.yml/badge.svg)](https://github.com/ACMCMC/silverspeak/actions/workflows/linting.yml) 👈 This means that the code is well formatted and follows the PEP8 style guide. It also means that the code is type-checked using mypy, and that the code is linted using flake8.
+
 # SilverSpeak
 This is a Python library to perform homoglyph-based attacks on text.
 
@@ -26,6 +28,18 @@ The project includes an editable SVG logo (`silverspeak_logo_editable.svg`) that
 1. The logo is automatically included in the documentation build
 2. You can refer to it in RST files using: `.. image:: _static/silverspeak_logo_editable.svg`
 3. To modify the logo, edit the SVG file directly using a vector graphics editor like Inkscape
+
+## Contributing
+**Contributions are very welcome!** SilverSpeak is still a work in progress, and while we're working hard to finish it, we'd greatly appreciate any help from the community.
+
+Here are some ways you can contribute:
+- Implementing new homoglyph attack strategies
+- Improving existing normalization techniques
+- Enhancing documentation and examples
+- Writing tests to ensure reliability
+- Reporting bugs or suggesting features via GitHub issues
+
+To contribute, please feel free to fork the repository, make your changes, and submit a pull request. If you're unsure about a contribution or have questions, you can also open an issue for discussion.
 
 ## Usage example
 ```python
