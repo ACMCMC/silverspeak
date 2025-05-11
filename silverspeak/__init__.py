@@ -40,6 +40,7 @@ from silverspeak.homoglyphs.normalize import normalize_text
 from silverspeak.homoglyphs.random_attack import random_attack
 from silverspeak.homoglyphs.utils import NormalizationStrategies, TypesOfHomoglyphs
 
+
 def get_version() -> str:
     """
     Get the current version of the SilverSpeak package.

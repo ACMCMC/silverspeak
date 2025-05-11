@@ -9,6 +9,7 @@ Author: Aldan Creo (ACMC) <os@acmc.fyi>
 
 import logging
 from typing import List, Mapping, Optional
+import transformers
 
 import torch
 
@@ -19,8 +20,8 @@ logger = logging.getLogger(__name__)
 def apply_language_model_strategy(
     text: str,
     mapping: Mapping[str, List[str]],
-    language_model: Optional['transformers.PreTrainedModel'] = None,
-    tokenizer: Optional['transformers.PreTrainedTokenizer'] = None,
+    language_model: Optional[transformers.PreTrainedModel] = None,
+    tokenizer: Optional[transformers.PreTrainedTokenizer] = None,
     model_name: str = "bert-base-multilingual-cased",
     batch_size: int = 8,
     max_length: int = 512,
