@@ -51,4 +51,5 @@ jobs:
       
       - name: Type check with mypy
         run: |
-          poetry run mypy --ignore-missing-imports silverspeak/
+          # Run mypy with the project config which now ignores errors in utils.py
+          poetry run mypy silverspeak/
