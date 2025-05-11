@@ -42,8 +42,8 @@ attacked_text = random_attack(text, 0.1)
 print(attacked_text)
 ```
 
-## Reproducing the experimental results from the paper
-This library was developed as part of the paper ["SilverSpeak: Evading AI-Generated Text Detectors using Homoglyphs"](https://aclanthology.org/2025.genaidetect-1.1/). A part of the code in this repository is used to reproduce the results of the paper (switch to the `experiments` branch to access it).
+# Reproducing the experimental results from the research paper
+This library was developed as part of the paper ["SilverSpeak: Evading AI-Generated Text Detectors using Homoglyphs"](https://aclanthology.org/2025.genaidetect-1.1/). A part of the code in this repository is used to reproduce the results of the paper (check out the `v1.0.0` tag).
 
 To reproduce the results, you'll need a free Hugging Face account. You can register for an account here: https://huggingface.co/
 
@@ -85,7 +85,7 @@ Specifically, the datasets are provided in two versions, one without the results
     - `silverspeak/realnewslike_with_results`
 
 ## AI Disclaimer
-We used AI code generation assitance from GitHub Copilot for this project. Nonetheless, the coding process has been essentially manual, with the AI code generator exclusively helping us to speed up the process.
+We used AI code generation assistance from GitHub Copilot for this project. Nonetheless, the coding process has been essentially manual, with the AI code generator exclusively helping us to speed up the process.
 
 ## Reproducibility statement
 We have tested the code in this repository on a NVIDIA A100 GPU, and have run the experiments twice, independently, to ensure the results are reproducible. We confirm that the results obtained were identical, and thus expect no variation in the results when running the code again. We manually set random seeds where necessary to ensure reproducibility.
