@@ -21,14 +21,6 @@ pip install silverspeak
 
 For full documentation, visit [the docs](http://acmcmc.me/silverspeak/).
 
-### Using the Logo
-
-The project includes an editable SVG logo (`silverspeak_logo_editable.svg`) that is used in the documentation. If you're contributing to the documentation:
-
-1. The logo is automatically included in the documentation build
-2. You can refer to it in RST files using: `.. image:: _static/silverspeak_logo_editable.svg`
-3. To modify the logo, edit the SVG file directly using a vector graphics editor like Inkscape
-
 ## Contributing
 **Contributions are very welcome!** SilverSpeak is still a work in progress, and while we're working hard to finish it, we'd greatly appreciate any help from the community.
 
@@ -50,32 +42,9 @@ attacked_text = random_attack(text, 0.1)
 print(attacked_text)
 ```
 
-## Installation from source
-First, you may want to work in a virtual environment. If you don't have one, you can create it by running:
-```
-python -m venv .venv
-```
-
-Then, activate it with:
-```
-source .venv/bin/activate
-```
-
-You can also use Conda, or any other tool of your preference.
-
-The Python version used in this project is `3.11.0`.
-
-Also, remember to install the requirements by running:
-```
-pip install -r requirements.txt
-```
-
-And finally, install this package by running:
-```
-pip install -e .
-```
-
 ## Reproducing the experimental results from the paper
+This library was developed as part of the paper ["SilverSpeak: Evading AI-Generated Text Detectors using Homoglyphs"](https://aclanthology.org/2025.genaidetect-1.1/). A part of the code in this repository is used to reproduce the results of the paper (switch to the `experiments` branch to access it).
+
 To reproduce the results, you'll need a free Hugging Face account. You can register for an account here: https://huggingface.co/
 
 Then, you'll need to sign into your account using the CLI with a token that has `write` permissions (more information [here](https://huggingface.co/docs/huggingface_hub/en/guides/cli)). To do that, just run:
