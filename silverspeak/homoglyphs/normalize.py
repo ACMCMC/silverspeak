@@ -28,6 +28,7 @@ def normalize_text(
     types_of_homoglyphs_to_use: List[TypesOfHomoglyphs] = _DEFAULT_HOMOGLYPHS_TO_USE,
     replace_with_priority: bool = False,
     strategy: NormalizationStrategies = NormalizationStrategies.LOCAL_CONTEXT,
+    **kwargs
 ) -> str:
     """
     Normalize text by replacing homoglyphs with their standard equivalents.
@@ -80,7 +81,7 @@ def normalize_text(
             types_of_homoglyphs_to_use=types_of_homoglyphs_to_use,
             replace_with_priority=replace_with_priority,
         )
-        return replacer.normalize(text, strategy=strategy)
+        return replacer.normalize(text, strategy=strategy, **kwargs)
     except Exception as e:
         logger.error(f"Error normalizing text: {e}")
         raise

@@ -42,6 +42,11 @@ from .normalization import (
     apply_language_model_strategy, 
     apply_local_context_strategy,
     apply_tokenizer_strategy,
+    apply_llm_prompt_strategy,
+    apply_spell_check_strategy,
+    apply_ngram_strategy,
+    apply_ocr_confidence_strategy,
+    apply_graph_strategy,
 )
 
 logger = logging.getLogger(__name__)
@@ -352,5 +357,92 @@ class HomoglyphReplacer:
                 logger.error(f"Error applying language model strategy: {e}")
                 logger.warning("Falling back to dominant script strategy")
                 return apply_dominant_script_strategy(replacer=self, text=text, **kwargs)
+                
+        elif strategy == NormalizationStrategies.LLM_PROMPT:
+            try:
+                import transformers
+                
+                model_name = kwargs.get("model_name", "google/gemma-2-1b-it")
+                
+                return apply_llm_prompt_strategy(
+                    text=text,
+                    mapping=self.base_normalization_map,
+                    **kwargs
+                )
+            except ImportError:
+                logger.error("Transformers library not available, falling back to dominant script strategy")
+                return apply_dominant_script_strategy(replacer=self, text=text, **kwargs)
+            except Exception as e:
+                logger.error(f"Error applying LLM prompt strategy: {e}")
+                logger.warning("Falling back to dominant script strategy")
+                return apply_dominant_script_strategy(replacer=self, text=text, **kwargs)
+                
+        elif strategy == NormalizationStrategies.SPELL_CHECK:
+            try:
+                language = kwargs.get("language", "en")
+                logger.info(f"Using spell checking strategy with language: {language}")
+                
+                return apply_spell_check_strategy(
+                    text=text,
+                    mapping=self.base_normalization_map,
+                    **kwargs
+                )
+            except ImportError as e:
+                logger.error(f"Required spell checking libraries not available: {e}")
+                logger.warning("Install spell checking dependencies using: poetry install --with spell-check")
+                logger.warning("Falling back to local context strategy")
+                return apply_local_context_strategy(text=text, normalization_map=self.base_normalization_map, **kwargs)
+            except Exception as e:
+                logger.error(f"Error applying spell check strategy: {e}")
+                logger.warning("Falling back to local context strategy")
+                return apply_local_context_strategy(text=text, normalization_map=self.base_normalization_map, **kwargs)
+                
+        elif strategy == NormalizationStrategies.NGRAM:
+            try:
+                logger.info("Using n-gram frequency strategy")
+                
+                return apply_ngram_strategy(
+                    text=text,
+                    mapping=self.base_normalization_map,
+                    **kwargs
+                )
+            except Exception as e:
+                logger.error(f"Error applying n-gram strategy: {e}")
+                logger.warning("Falling back to local context strategy")
+                return apply_local_context_strategy(text=text, normalization_map=self.base_normalization_map, **kwargs)
+                
+        elif strategy == NormalizationStrategies.OCR_CONFIDENCE:
+            try:
+                logger.info("Using OCR confidence strategy")
+                
+                return apply_ocr_confidence_strategy(
+                    text=text,
+                    mapping=self.base_normalization_map,
+                    **kwargs
+                )
+            except ImportError as e:
+                logger.error(f"Required OCR libraries not available: {e}")
+                logger.warning("Install OCR dependencies using: pip install pytesseract pillow")
+                logger.warning("Falling back to local context strategy")
+                return apply_local_context_strategy(text=text, normalization_map=self.base_normalization_map, **kwargs)
+            except Exception as e:
+                logger.error(f"Error applying OCR confidence strategy: {e}")
+                logger.warning("Falling back to local context strategy")
+                return apply_local_context_strategy(text=text, normalization_map=self.base_normalization_map, **kwargs)
+                
+        elif strategy == NormalizationStrategies.GRAPH_BASED:
+            try:
+                logger.info("Using graph-based strategy")
+                
+                return apply_graph_strategy(
+                    text=text,
+                    mapping=self.base_normalization_map,
+                    **kwargs
+                )
+            except Exception as e:
+                logger.error(f"Error applying graph-based strategy: {e}")
+                logger.warning("Falling back to local context strategy")
+                return apply_local_context_strategy(text=text, normalization_map=self.base_normalization_map, **kwargs)
+                
         else:
             raise NotImplementedError(f"Strategy {strategy} is unknown.")

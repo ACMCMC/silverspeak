@@ -55,7 +55,12 @@ class NormalizationStrategies(Enum):
         DOMINANT_SCRIPT_AND_BLOCK: Normalize based on both dominant script and Unicode block.
         LOCAL_CONTEXT: Normalize based on surrounding character context.
         TOKENIZATION: Normalize based on tokenization of the text.
-        LANGUAGE_MODEL: Normalize using a language model to determine the most likely characters.
+        LANGUAGE_MODEL: Normalize using a masked language model to determine the most likely characters.
+        LLM_PROMPT: Normalize using a generative language model prompted to fix homoglyphs.
+        SPELL_CHECK: Normalize using spelling correction algorithms with multilingual support.
+        NGRAM: Normalize using character n-gram frequency analysis.
+        OCR_CONFIDENCE: Normalize using OCR confidence scores or confusion matrices.
+        GRAPH_BASED: Normalize using a graph-based character similarity network.
     """
 
     DOMINANT_SCRIPT = "dominant_script"
@@ -63,3 +68,8 @@ class NormalizationStrategies(Enum):
     LOCAL_CONTEXT = "local_context"
     TOKENIZATION = "tokenization"
     LANGUAGE_MODEL = "language_model"
+    LLM_PROMPT = "llm_prompt"
+    SPELL_CHECK = "spell_check"
+    NGRAM = "ngram"
+    OCR_CONFIDENCE = "ocr_confidence"
+    GRAPH_BASED = "graph_based"

@@ -10,9 +10,46 @@ We also include the experiments supplementing the paper "SilverSpeak: Evading AI
 ![SilverSpeak Logo](docs/source/_static/silverspeak_logo_editable.svg)
 
 ## Installation
+
+### Basic Installation
 You can install this package from PyPI by running:
 ```
 pip install silverspeak
+```
+
+### Optional Dependencies
+
+SilverSpeak provides optional dependencies for enhanced normalization strategies:
+
+#### Spell Checking Dependencies
+```
+pip install "silverspeak[spell-check]"
+```
+
+#### Contextual Spell Checking
+```
+pip install "silverspeak[contextual-spell-check]"
+```
+
+#### N-gram Analysis
+```
+pip install "silverspeak[ngram-analysis]"
+```
+
+#### Graph-based Analysis
+```
+pip install "silverspeak[graph-analysis]"
+```
+
+#### OCR-based Analysis
+```
+pip install pytesseract pillow
+```
+
+#### All Optional Dependencies
+```
+pip install "silverspeak[spell-check,contextual-spell-check,ngram-analysis,graph-analysis]"
+pip install pytesseract pillow
 ```
 
 ## Documentation
@@ -27,13 +64,76 @@ The project includes an editable SVG logo (`silverspeak_logo_editable.svg`) that
 2. You can refer to it in RST files using: `.. image:: _static/silverspeak_logo_editable.svg`
 3. To modify the logo, edit the SVG file directly using a vector graphics editor like Inkscape
 
-## Usage example
+## Usage Examples
+
+### Basic Attack Example
 ```python
 from silverspeak.homoglyphs.random_attack import random_attack
 
 text = "Hello, world!"
 attacked_text = random_attack(text, 0.1)
 print(attacked_text)
+```
+
+### Normalization Strategies
+
+SilverSpeak offers multiple strategies for normalizing text that contains homoglyphs:
+
+#### Basic Normalization
+```python
+from silverspeak.homoglyphs import normalize_text
+from silverspeak.homoglyphs.utils import NormalizationStrategies
+
+# Text with homoglyphs
+text = "Tһis іs а tеst with ѕome һomoglурhs."
+
+# Default strategy (dominant script)
+normalized = normalize_text(text)
+print(normalized)
+```
+
+#### Advanced Normalization Strategies
+
+##### Spell Check Strategy
+```python
+from silverspeak.homoglyphs import normalize_text
+from silverspeak.homoglyphs.utils import NormalizationStrategies
+
+# Requires: poetry install --with spell-check
+normalized = normalize_text(
+    "Tһis іs а tеst with ѕome һomoglурhs.",
+    strategy=NormalizationStrategies.SPELL_CHECK,
+    language="en"  # Optional, default is English
+)
+print(normalized)
+```
+
+##### Language Model Strategy
+```python
+from silverspeak.homoglyphs import normalize_text
+from silverspeak.homoglyphs.utils import NormalizationStrategies
+
+# Uses BERT to predict masked tokens
+normalized = normalize_text(
+    "Tһis іs а tеst with ѕome һomoglурhs.",
+    strategy=NormalizationStrategies.LANGUAGE_MODEL,
+    word_level=True  # Use word-level masking (recommended)
+)
+print(normalized)
+```
+
+##### LLM Prompt Strategy
+```python
+from silverspeak.homoglyphs import normalize_text
+from silverspeak.homoglyphs.utils import NormalizationStrategies
+
+# Uses LLMs to fix homoglyphs via prompting
+normalized = normalize_text(
+    "Tһis іs а tеst with ѕome һomoglурhs.",
+    strategy=NormalizationStrategies.LLM_PROMPT,
+    model_name="google/gemma-2-1b-it"  # Optional
+)
+print(normalized)
 ```
 
 ## Installation from source

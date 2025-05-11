@@ -63,4 +63,61 @@ SilverSpeak is a Python library designed to manipulate text using homoglyphs for
 
    In this example, the `HomoglyphReplacer` class provides a flexible interface for replacing characters in the input text with homoglyphs. The specific homoglyphs used for replacement are determined by the replacer's configuration.
 
-Refer to the API reference for detailed documentation of each module, including additional parameters and advanced usage scenarios.
+4. **Using Advanced Normalization Strategies**:
+
+   SilverSpeak offers multiple normalization strategies to handle homoglyph detection and correction. Here are examples of using the new strategies:
+
+   a. **Spell Check Normalization**:
+
+   .. code-block:: python
+
+      from silverspeak.homoglyphs import normalize_text
+      from silverspeak.homoglyphs.utils import NormalizationStrategies
+
+      # Text with homoglyphs (Cyrillic 'а', 'е', 'р')
+      text = "This is а tеst with homoglурhs."
+
+      # Normalize using spell checking (requires spell-check dependencies)
+      normalized_text = normalize_text(
+          text, 
+          strategy=NormalizationStrategies.SPELL_CHECK,
+          language="en"  # Optional: specify language (default is English)
+      )
+      print(normalized_text)  # "This is a test with homoglyphs."
+
+   b. **Language Model Masking**:
+
+   .. code-block:: python
+
+      from silverspeak.homoglyphs import normalize_text
+      from silverspeak.homoglyphs.utils import NormalizationStrategies
+
+      # Text with homoglyphs
+      text = "Tһis іs а tеst with ѕome һomoglурhs."
+
+      # Normalize using language model masking
+      normalized_text = normalize_text(
+          text,
+          strategy=NormalizationStrategies.LANGUAGE_MODEL
+      )
+      print(normalized_text)
+
+   c. **LLM Prompt-based Normalization**:
+
+   .. code-block:: python
+
+      from silverspeak.homoglyphs import normalize_text
+      from silverspeak.homoglyphs.utils import NormalizationStrategies
+
+      # Text with homoglyphs
+      text = "Tһis іs а tеst with ѕome һomoglурhs."
+
+      # Normalize using LLM prompting (requires transformers with a suitable model)
+      normalized_text = normalize_text(
+          text,
+          strategy=NormalizationStrategies.LLM_PROMPT,
+          model_name="google/gemma-2-1b-it"  # Optional: specify a different model
+      )
+      print(normalized_text)
+
+Refer to the API reference for detailed documentation of each module, including additional parameters and advanced usage scenarios. For more information on normalization strategies, see the Normalization Strategies section.
