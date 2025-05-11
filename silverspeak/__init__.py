@@ -17,16 +17,18 @@ License: See LICENSE file in the project root
 
 try:
     from importlib.metadata import version as _version
+
     __version__ = _version("silverspeak")
 except (ImportError, ModuleNotFoundError):
     # If package is not installed in a way that metadata is available
     # fallback to reading from pyproject.toml
     import os
+
     import tomli
-    
+
     _package_root = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
     _pyproject_path = os.path.join(_package_root, "pyproject.toml")
-    
+
     if os.path.isfile(_pyproject_path):
         with open(_pyproject_path, "rb") as f:
             _pyproject_data = tomli.load(f)
@@ -40,10 +42,11 @@ from silverspeak.homoglyphs.normalize import normalize_text
 from silverspeak.homoglyphs.random_attack import random_attack
 from silverspeak.homoglyphs.utils import NormalizationStrategies, TypesOfHomoglyphs
 
+
 def get_version() -> str:
     """
     Get the current version of the SilverSpeak package.
-    
+
     Returns:
         str: The current version string
     """
@@ -58,5 +61,5 @@ __all__ = [
     "TypesOfHomoglyphs",
     "NormalizationStrategies",
     "get_version",
-    "__version__"
+    "__version__",
 ]

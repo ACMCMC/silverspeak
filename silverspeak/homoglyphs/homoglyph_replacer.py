@@ -308,33 +308,25 @@ class HomoglyphReplacer:
         # If the text is empty, return it as is
         if not text:
             return text
-            
+
         if strategy == NormalizationStrategies.DOMINANT_SCRIPT:
             return apply_dominant_script_strategy(replacer=self, text=text, **kwargs)
-            
+
         elif strategy == NormalizationStrategies.DOMINANT_SCRIPT_AND_BLOCK:
             return apply_dominant_script_and_block_strategy(replacer=self, text=text, **kwargs)
-            
+
         elif strategy == NormalizationStrategies.LOCAL_CONTEXT:
-            return apply_local_context_strategy(
-                text=text,
-                normalization_map=self.base_normalization_map,
-                **kwargs
-            )
-            
+            return apply_local_context_strategy(text=text, normalization_map=self.base_normalization_map, **kwargs)
+
         elif strategy == NormalizationStrategies.TOKENIZATION:
-            return apply_tokenizer_strategy(
-                text=text,
-                mapping=self.base_normalization_map,
-                **kwargs
-            )
-            
+            return apply_tokenizer_strategy(text=text, mapping=self.base_normalization_map, **kwargs)
+
         elif strategy == NormalizationStrategies.LANGUAGE_MODEL:
             try:
                 import transformers
-                
+
                 model_name = kwargs.get("model_name", "bert-base-multilingual-cased")
-                
+
                 # Only try to load the model if not provided in kwargs
                 if "language_model" not in kwargs or "tokenizer" not in kwargs:
                     try:
@@ -344,12 +336,8 @@ class HomoglyphReplacer:
                         kwargs["tokenizer"] = tokenizer
                     except Exception as e:
                         logger.error(f"Failed to load language model: {e}")
-                
-                return apply_language_model_strategy(
-                    text=text,
-                    mapping=self.base_normalization_map,
-                    **kwargs
-                )
+
+                return apply_language_model_strategy(text=text, mapping=self.base_normalization_map, **kwargs)
             except ImportError:
                 logger.error("Transformers library not available, falling back to dominant script strategy")
                 return apply_dominant_script_strategy(replacer=self, text=text, **kwargs)

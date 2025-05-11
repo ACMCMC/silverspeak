@@ -16,10 +16,7 @@ from typing import Dict, List, Optional, Set, Union
 import unicodedataplus
 
 from silverspeak.homoglyphs.homoglyph_replacer import HomoglyphReplacer
-from silverspeak.homoglyphs.script_block_category_utils import (
-    detect_dominant_block,
-    detect_dominant_script,
-)
+from silverspeak.homoglyphs.script_block_category_utils import detect_dominant_block, detect_dominant_script
 from silverspeak.homoglyphs.utils import (
     _DEFAULT_HOMOGLYPHS_TO_USE,
     _DEFAULT_UNICODE_CATEGORIES_TO_REPLACE,

@@ -17,6 +17,7 @@ from collections import defaultdict
 from typing import Dict, List, Mapping, Optional, Set, Tuple, Union
 
 import torch
+import transformers
 
 logger = logging.getLogger(__name__)
 
@@ -25,8 +26,8 @@ logger = logging.getLogger(__name__)
 def apply_language_model_strategy(
     text: str,
     mapping: Mapping[str, List[str]],
-    language_model: Optional['transformers.PreTrainedModel'] = None,
-    tokenizer: Optional['transformers.PreTrainedTokenizer'] = None,
+    language_model: Optional[transformers.PreTrainedModel] = None,
+    tokenizer: Optional[transformers.PreTrainedTokenizer] = None,
     model_name: str = "bert-base-multilingual-cased",
     batch_size: int = 8,
     max_length: int = 512,
@@ -111,10 +112,10 @@ def apply_language_model_strategy(
             logging.info(f"Loading model and tokenizer: {model_name}")
             tokenizer = AutoTokenizer.from_pretrained(model_name)
             language_model = AutoModelForMaskedLM.from_pretrained(model_name)
-            
+
             # At this point language_model is guaranteed to be not None if we reach here
             assert language_model is not None, "Model loading failed but did not raise an exception"
-            
+
             # Now we can safely use the methods - add type assertions for mypy
             assert hasattr(language_model, "to"), "Model does not have 'to' method"
             assert hasattr(language_model, "eval"), "Model does not have 'eval' method"
@@ -133,11 +134,11 @@ def apply_language_model_strategy(
         assert hasattr(language_model, "eval"), "Model does not have 'eval' method"
         language_model.to(device)
         language_model.eval()
-        
+
     # Ensure tokenizer is not None after loading attempt
     if tokenizer is None:
         raise RuntimeError("Tokenizer is None after loading attempt")
-        
+
     # Get mask token and ID
     mask_token = tokenizer.mask_token
     mask_token_id = tokenizer.mask_token_id

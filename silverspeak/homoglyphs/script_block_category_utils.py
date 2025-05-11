@@ -31,10 +31,10 @@ def detect_dominant_script(text: str) -> str:
     """
     script_counts = get_script_counts(text=text)
     total_count = sum(script_counts.values())
-    
+
     # Fix for mypy: explicit lambda to avoid type issue with key parameter
     dominant_script = max(script_counts.keys(), key=lambda k: script_counts[k])
-    
+
     if script_counts[dominant_script] / total_count < 0.75:
         logging.warning(
             f"The dominant script '{dominant_script}' comprises less than 75% of the total character count. "
@@ -70,10 +70,10 @@ def detect_dominant_block(text: str) -> str:
     """
     block_counts = get_block_counts(text=text)
     total_count = sum(block_counts.values())
-    
+
     # Fix for mypy: explicit lambda to avoid type issue with key parameter
     dominant_block = max(block_counts.keys(), key=lambda k: block_counts[k])
-    
+
     if block_counts[dominant_block] / total_count < 0.75:
         logging.warning(
             f"The dominant Unicode block '{dominant_block}' comprises less than 75% of the total character count. "
@@ -89,7 +89,7 @@ def is_script_and_block(text: str, script: Optional[str], block: Optional[str]) 
 
     Args:
         text (str): Text to analyze.
-        script (Optional[str]): Script to check against. 
+        script (Optional[str]): Script to check against.
         block (Optional[str]): Unicode block to check against.
 
     Returns:
@@ -97,13 +97,13 @@ def is_script_and_block(text: str, script: Optional[str], block: Optional[str]) 
     """
     if not text:
         return True
-        
+
     if not script:
         return True
-        
+
     if not block:
         return all(unicodedataplus.script(char) == script for char in text)
-        
+
     return all(unicodedataplus.script(char) == script and unicodedataplus.block(char) == block for char in text)
 
 
@@ -123,11 +123,11 @@ def is_category(
     """
     if isinstance(category, str):
         category = [category]
-    
+
     # Convert category to a list if it's a set (for compatibility)
     categories = list(category)
-    
+
     if not text:
         return True
-        
+
     return all(unicodedataplus.category(char) in categories for char in text)

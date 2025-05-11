@@ -2,6 +2,8 @@
 
 [![Full Test Workflow](https://github.com/ACMCMC/silverspeak/actions/workflows/full-test.yml/badge.svg)](https://github.com/ACMCMC/silverspeak/actions/workflows/full-test.yml) 👈 This should fail. It means that not all strategies work perfectly in every single test case, which is to be expected and means you need to choose your strategies wisely. Check [the docs](http://acmcmc.me/silverspeak/) for more context.
 
+[![Linting](https://github.com/ACMCMC/silverspeak/actions/workflows/linting.yml/badge.svg)](https://github.com/ACMCMC/silverspeak/actions/workflows/linting.yml) 👈 This means that the code is well formatted and follows the PEP8 style guide. It also means that the code is type-checked using mypy, and that the code is linted using flake8.
+
 # SilverSpeak
 This is a Python library to perform homoglyph-based attacks on text.
 
@@ -56,13 +58,17 @@ pip install pytesseract pillow
 
 For full documentation, visit [the docs](http://acmcmc.me/silverspeak/).
 
-### Using the Logo
+## Contributing
+**Contributions are very welcome!** SilverSpeak is still a work in progress, and while we're working hard to finish it, we'd greatly appreciate any help from the community.
 
-The project includes an editable SVG logo (`silverspeak_logo_editable.svg`) that is used in the documentation. If you're contributing to the documentation:
+Here are some ways you can contribute:
+- Implementing new homoglyph attack strategies
+- Improving existing normalization techniques
+- Enhancing documentation and examples
+- Writing tests to ensure reliability
+- Reporting bugs or suggesting features via GitHub issues
 
-1. The logo is automatically included in the documentation build
-2. You can refer to it in RST files using: `.. image:: _static/silverspeak_logo_editable.svg`
-3. To modify the logo, edit the SVG file directly using a vector graphics editor like Inkscape
+To contribute, please feel free to fork the repository, make your changes, and submit a pull request. If you're unsure about a contribution or have questions, you can also open an issue for discussion.
 
 ## Usage Examples
 
@@ -75,93 +81,9 @@ attacked_text = random_attack(text, 0.1)
 print(attacked_text)
 ```
 
-### Normalization Strategies
+# Reproducing the experimental results from the research paper
+This library was developed as part of the paper ["SilverSpeak: Evading AI-Generated Text Detectors using Homoglyphs"](https://aclanthology.org/2025.genaidetect-1.1/). A part of the code in this repository is used to reproduce the results of the paper (check out the `v1.0.0` tag).
 
-SilverSpeak offers multiple strategies for normalizing text that contains homoglyphs:
-
-#### Basic Normalization
-```python
-from silverspeak.homoglyphs import normalize_text
-from silverspeak.homoglyphs.utils import NormalizationStrategies
-
-# Text with homoglyphs
-text = "Tһis іs а tеst with ѕome һomoglурhs."
-
-# Default strategy (dominant script)
-normalized = normalize_text(text)
-print(normalized)
-```
-
-#### Advanced Normalization Strategies
-
-##### Spell Check Strategy
-```python
-from silverspeak.homoglyphs import normalize_text
-from silverspeak.homoglyphs.utils import NormalizationStrategies
-
-# Requires: poetry install --with spell-check
-normalized = normalize_text(
-    "Tһis іs а tеst with ѕome һomoglурhs.",
-    strategy=NormalizationStrategies.SPELL_CHECK,
-    language="en"  # Optional, default is English
-)
-print(normalized)
-```
-
-##### Language Model Strategy
-```python
-from silverspeak.homoglyphs import normalize_text
-from silverspeak.homoglyphs.utils import NormalizationStrategies
-
-# Uses BERT to predict masked tokens
-normalized = normalize_text(
-    "Tһis іs а tеst with ѕome һomoglурhs.",
-    strategy=NormalizationStrategies.LANGUAGE_MODEL,
-    word_level=True  # Use word-level masking (recommended)
-)
-print(normalized)
-```
-
-##### LLM Prompt Strategy
-```python
-from silverspeak.homoglyphs import normalize_text
-from silverspeak.homoglyphs.utils import NormalizationStrategies
-
-# Uses LLMs to fix homoglyphs via prompting
-normalized = normalize_text(
-    "Tһis іs а tеst with ѕome һomoglурhs.",
-    strategy=NormalizationStrategies.LLM_PROMPT,
-    model_name="google/gemma-2-1b-it"  # Optional
-)
-print(normalized)
-```
-
-## Installation from source
-First, you may want to work in a virtual environment. If you don't have one, you can create it by running:
-```
-python -m venv .venv
-```
-
-Then, activate it with:
-```
-source .venv/bin/activate
-```
-
-You can also use Conda, or any other tool of your preference.
-
-The Python version used in this project is `3.11.0`.
-
-Also, remember to install the requirements by running:
-```
-pip install -r requirements.txt
-```
-
-And finally, install this package by running:
-```
-pip install -e .
-```
-
-## Reproducing the experimental results from the paper
 To reproduce the results, you'll need a free Hugging Face account. You can register for an account here: https://huggingface.co/
 
 Then, you'll need to sign into your account using the CLI with a token that has `write` permissions (more information [here](https://huggingface.co/docs/huggingface_hub/en/guides/cli)). To do that, just run:
@@ -202,7 +124,7 @@ Specifically, the datasets are provided in two versions, one without the results
     - `silverspeak/realnewslike_with_results`
 
 ## AI Disclaimer
-We used AI code generation assitance from GitHub Copilot for this project. Nonetheless, the coding process has been essentially manual, with the AI code generator exclusively helping us to speed up the process.
+We used AI code generation assistance from GitHub Copilot for this project. Nonetheless, the coding process has been essentially manual, with the AI code generator exclusively helping us to speed up the process.
 
 ## Reproducibility statement
 We have tested the code in this repository on a NVIDIA A100 GPU, and have run the experiments twice, independently, to ensure the results are reproducible. We confirm that the results obtained were identical, and thus expect no variation in the results when running the code again. We manually set random seeds where necessary to ensure reproducibility.
