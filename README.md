@@ -10,9 +10,46 @@ This is a Python library to perform homoglyph-based attacks on text.
 ![SilverSpeak Logo](docs/source/_static/silverspeak_logo_editable.svg)
 
 ## Installation
+
+### Basic Installation
 You can install this package from PyPI by running:
 ```
 pip install silverspeak
+```
+
+### Optional Dependencies
+
+SilverSpeak provides optional dependencies for enhanced normalization strategies:
+
+#### Spell Checking Dependencies
+```
+pip install "silverspeak[spell-check]"
+```
+
+#### Contextual Spell Checking
+```
+pip install "silverspeak[contextual-spell-check]"
+```
+
+#### N-gram Analysis
+```
+pip install "silverspeak[ngram-analysis]"
+```
+
+#### Graph-based Analysis
+```
+pip install "silverspeak[graph-analysis]"
+```
+
+#### OCR-based Analysis
+```
+pip install pytesseract pillow
+```
+
+#### All Optional Dependencies
+```
+pip install "silverspeak[spell-check,contextual-spell-check,ngram-analysis,graph-analysis]"
+pip install pytesseract pillow
 ```
 
 ## Documentation
@@ -31,7 +68,9 @@ Here are some ways you can contribute:
 
 To contribute, please feel free to fork the repository, make your changes, and submit a pull request. If you're unsure about a contribution or have questions, you can also open an issue for discussion.
 
-## Usage example
+## Usage Examples
+
+### Basic Attack Example
 ```python
 from silverspeak.homoglyphs.random_attack import random_attack
 

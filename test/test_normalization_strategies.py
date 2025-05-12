@@ -11,6 +11,9 @@ from silverspeak.homoglyphs.normalization import (
     apply_local_context_strategy,
     apply_tokenizer_strategy,
     apply_language_model_strategy,
+    apply_ngram_strategy,
+    apply_ocr_confidence_strategy,
+    apply_graph_strategy,
     configure_logging,
     VALID_LOG_LEVELS,
 )
@@ -55,6 +58,10 @@ def test_normalization_map():
         "о": ["o"],  # Cyrillic 'о' to Latin 'o'
         "с": ["c"],  # Cyrillic 'с' to Latin 'c'
         "р": ["p"],  # Cyrillic 'р' to Latin 'p'
+        "һ": ["h"],  # Cyrillic 'һ' to Latin 'h'
+        "і": ["i"],  # Cyrillic 'і' to Latin 'i'
+        "ѕ": ["s"],  # Cyrillic 'ѕ' to Latin 's'
+        "у": ["y"],  # Cyrillic 'у' to Latin 'y'
     }
 
 
@@ -155,7 +162,8 @@ class TestDominantScriptAndBlockStrategy:
             apply_dominant_script_and_block_strategy(None, "test")
     
     def test_apply_dominant_script_and_block_strategy_unknown(self, mock_replacer):
-        """Test apply_dominant_script_and_block_strategy with unknown script/block."""        with unittest.mock.patch("silverspeak.homoglyphs.script_block_category_utils.detect_dominant_script") as mock_script:
+        """Test apply_dominant_script_and_block_strategy with unknown script/block."""
+        with unittest.mock.patch("silverspeak.homoglyphs.script_block_category_utils.detect_dominant_script") as mock_script:
             with unittest.mock.patch("silverspeak.homoglyphs.script_block_category_utils.detect_dominant_block") as mock_block:
                 mock_script.return_value = "Unknown"
                 mock_block.return_value = "Unknown"
@@ -297,6 +305,580 @@ class TestLanguageModelStrategy:
                 assert isinstance(result, str)
 
 
+class TestSpellCheckStrategy:
+    """Tests for the spell check normalization strategy."""
+    
+    @pytest.mark.xfail(reason="Requires symspellpy and pyspellchecker dependencies")
+    def test_basic_spell_check(self):
+        """Test basic spell check functionality."""
+        try:
+            from silverspeak.homoglyphs.normalization.spell_check import apply_spell_check_strategy
+            
+            # Text with homoglyphs (Cyrillic characters)
+            text = "Tһis іs а tеst."  # Contains homoglyphs
+            
+            result = apply_spell_check_strategy(
+                text=text,
+                normalization_map={
+                    "һ": ["h"],  # Cyrillic 'һ' to Latin 'h'
+                    "і": ["i"],  # Cyrillic 'і' to Latin 'i'
+                    "а": ["a"],  # Cyrillic 'а' to Latin 'a'
+                    "е": ["e"],  # Cyrillic 'е' to Latin 'e'
+                },
+                language="en"
+            )
+            
+            assert result == "This is a test."
+        except ImportError:
+            pytest.skip("Required dependencies not installed")
+    
+    @pytest.mark.xfail(reason="Requires symspellpy and pyspellchecker dependencies")
+    def test_custom_dictionary(self):
+        """Test spell check with custom dictionary."""
+        try:
+            from silverspeak.homoglyphs.normalization.spell_check import apply_spell_check_strategy
+            
+            # Text with homoglyphs and domain-specific terms
+            text = "SіlvеrSреаk"  # Contains homoglyphs
+            
+            result = apply_spell_check_strategy(
+                text=text,
+                normalization_map={
+                    "і": ["i"],  # Cyrillic 'і' to Latin 'i'
+                    "е": ["e"],  # Cyrillic 'е' to Latin 'e'
+                    "р": ["p"],  # Cyrillic 'р' to Latin 'p'
+                    "а": ["a"],  # Cyrillic 'а' to Latin 'a'
+                },
+                language="en",
+                custom_words=["SilverSpeak"]
+            )
+            
+            assert result == "SilverSpeak"
+        except ImportError:
+            pytest.skip("Required dependencies not installed")
+
+
+class TestLLMPromptStrategy:
+    """Tests for the LLM prompt-based normalization strategy."""
+    
+    @pytest.mark.xfail(reason="Requires transformers dependency")
+    def test_llm_prompt_basic(self):
+        """Test basic LLM prompt strategy."""
+        try:
+            from silverspeak.homoglyphs.normalization.llm_prompt import apply_llm_prompt_strategy
+            import unittest.mock
+            
+            # Text with homoglyphs
+            text = "Tһis іs а tеst."  # Contains homoglyphs
+            
+            # Mock the pipeline
+            with unittest.mock.patch("silverspeak.homoglyphs.normalization.llm_prompt.pipeline") as mock_pipeline:
+                mock_pipe_instance = unittest.mock.MagicMock()
+                mock_pipe_instance.return_value = [{"generated_text": "This is a test."}]
+                mock_pipeline.return_value = mock_pipe_instance
+                
+                result = apply_llm_prompt_strategy(
+                    text=text,
+                    normalization_map={
+                        "һ": ["h"],
+                        "і": ["i"],
+                        "а": ["a"],
+                        "е": ["e"]
+                    }
+                )
+                
+                # Verify the result matches the mocked return value
+                assert result == "This is a test."
+                
+                # Verify the pipeline was called with the expected model name
+                mock_pipeline.assert_called_once()
+        except ImportError:
+            pytest.skip("Required dependencies not installed")
+
+
+class TestLanguageModelStrategy:
+    """Tests for the language model normalization strategy."""
+    
+    @pytest.mark.xfail(reason="Requires transformers and torch dependencies")
+    def test_language_model_word_level(self):
+        """Test language model strategy with word-level masking."""
+        try:
+            import unittest.mock
+            import torch
+            from silverspeak.homoglyphs.normalization.language_model import apply_language_model_strategy
+            
+            # Mock the language model and tokenizer
+            with unittest.mock.patch("silverspeak.homoglyphs.normalization.language_model.AutoModelForMaskedLM") as mock_model_class:
+                with unittest.mock.patch("silverspeak.homoglyphs.normalization.language_model.AutoTokenizer") as mock_tokenizer_class:
+                    mock_model = unittest.mock.MagicMock()
+                    mock_tokenizer = unittest.mock.MagicMock()
+                    
+                    # Mock the tokenize method
+                    mock_tokenizer.tokenize.return_value = ["this", "is", "a", "test"]
+                    
+                    # Mock the encode method
+                    mock_tokenizer.encode.return_value = [101, 1996, 2003, 1037, 3231, 102]
+                    
+                    # Mock the convert_ids_to_tokens method
+                    mock_tokenizer.convert_ids_to_tokens.return_value = ["[CLS]", "this", "is", "a", "test", "[SEP]"]
+                    
+                    # Mock the decode method
+                    mock_tokenizer.decode.return_value = "this is a test"
+                    
+                    # Mock the __call__ method of the model
+                    mock_model.return_value.logits = unittest.mock.MagicMock()
+                    
+                    mock_model_class.from_pretrained.return_value = mock_model
+                    mock_tokenizer_class.from_pretrained.return_value = mock_tokenizer
+                    
+                    # Text with homoglyphs
+                    text = "Tһis іs а tеst."  # Contains homoglyphs
+                    
+                    result = apply_language_model_strategy(
+                        text=text,
+                        normalization_map={
+                            "һ": ["h"],
+                            "і": ["i"],
+                            "а": ["a"],
+                            "е": ["e"]
+                        },
+                        word_level=True
+                    )
+                    
+                    # With our mocks, we expect the result to be the mocked decode return value
+                    assert result == "this is a test"
+        except ImportError:
+            pytest.skip("Required dependencies not installed")
+
+
+class TestNgramStrategy:
+    """Tests for the n-gram frequency-based normalization strategy."""
+    
+    def test_basic_normalization(self, test_normalization_map, monkeypatch):
+        """Test basic normalization with n-gram frequency strategy."""
+        test_text = "Tһis іs а test wіth ѕоmе homoglyphs."
+        expected = "This is a test with some homoglyphs."
+        
+        # Track parameters passed to CharNgramAnalyzer
+        analyzer_params = {}
+        
+        # Mock the CharNgramAnalyzer class
+        class MockCharNgramAnalyzer:
+            def __init__(self, n_values=None, language="english"):
+                nonlocal analyzer_params
+                analyzer_params['n_values'] = n_values if n_values else [2, 3, 4]
+                analyzer_params['language'] = language
+                
+            def train_on_text(self, text):
+                pass
+                
+            def get_character_scores(self, text, context_window=2):
+                return {c: 1.0 if c in "һіаѕое" else 0.0 for c in text}
+                
+            def get_unlikely_characters(self, text, threshold=0.01):
+                return [c for c in text if c in "һіаѕое"]
+            
+            def score_text(self, text):
+                return [0.5 if c in "һіаѕое" else 0.9 for c in text]
+            
+        # Mock function to bypass the actual n-gram analysis
+        def mock_score_and_normalize_text(text, normalization_map, analyzer, threshold=0.01):
+            return expected
+            
+        # Apply the monkepatches
+        monkeypatch.setattr("silverspeak.homoglyphs.normalization.ngram.CharNgramAnalyzer", MockCharNgramAnalyzer)
+        monkeypatch.setattr("silverspeak.homoglyphs.normalization.ngram.score_and_normalize_text", mock_score_and_normalize_text)
+            
+        result = apply_ngram_strategy(
+            text=test_text,
+            mapping=test_normalization_map
+        )
+        
+        assert result == expected
+    
+    def test_threshold_effect(self, test_normalization_map, monkeypatch):
+        """Test the effect of threshold parameter on n-gram strategy."""
+        test_text = "Tһis іs а test."
+        expected = "This is a test."
+        
+        # Track threshold parameter
+        threshold_used = None
+        
+        # Mock the score_and_normalize_text function to capture the threshold
+        def mock_score_and_normalize_text(text, normalization_map, analyzer, threshold=0.01):
+            nonlocal threshold_used
+            threshold_used = threshold
+            return expected
+            
+        # Mock the CharNgramAnalyzer class with minimal functionality
+        class MockCharNgramAnalyzer:
+            def __init__(self, n_values=None, language="english"):
+                pass
+                
+            def train_on_text(self, text):
+                pass
+                
+            def get_unlikely_characters(self, text, threshold=0.01):
+                return []
+                
+            def score_text(self, text):
+                return [0.9] * len(text)
+        
+        # Apply the monkepatches
+        monkeypatch.setattr("silverspeak.homoglyphs.normalization.ngram.CharNgramAnalyzer", MockCharNgramAnalyzer)
+        monkeypatch.setattr("silverspeak.homoglyphs.normalization.ngram.score_and_normalize_text", mock_score_and_normalize_text)
+            
+        # Set a custom threshold
+        custom_threshold = 0.05
+        result = apply_ngram_strategy(
+            text=test_text,
+            mapping=test_normalization_map,
+            threshold=custom_threshold
+        )
+        
+        # Verify the threshold was passed correctly
+        assert threshold_used == custom_threshold
+        assert result == expected
+    
+    def test_language_specific_behavior(self, test_normalization_map, monkeypatch):
+        """Test language-specific behavior of n-gram strategy."""
+        test_text = "Tһis іs а test."
+        expected = "This is a test."
+        
+        # Track language parameter
+        language_used = None
+        
+        # Mock the CharNgramAnalyzer class to capture language
+        class MockCharNgramAnalyzer:
+            def __init__(self, n_values=None, language="english"):
+                nonlocal language_used
+                language_used = language
+                
+            def train_on_text(self, text):
+                pass
+                
+            def get_unlikely_characters(self, text, threshold=0.01):
+                return []
+                
+            def score_text(self, text):
+                return [0.9] * len(text)
+        
+        # Mock normalize function
+        def mock_score_and_normalize_text(text, normalization_map, analyzer, threshold=0.01):
+            return expected
+            
+        # Apply the monkepatches
+        monkeypatch.setattr("silverspeak.homoglyphs.normalization.ngram.CharNgramAnalyzer", MockCharNgramAnalyzer)
+        monkeypatch.setattr("silverspeak.homoglyphs.normalization.ngram.score_and_normalize_text", mock_score_and_normalize_text)
+            
+        # Set a custom language
+        custom_language = "spanish"
+        result = apply_ngram_strategy(
+            text=test_text,
+            mapping=test_normalization_map,
+            language=custom_language
+        )
+        
+        # Verify the language was passed correctly
+        assert language_used == custom_language
+        assert result == expected
+
+
+class TestOCRConfidenceStrategy:
+    """Tests for the OCR confidence-based normalization strategy."""
+    
+    def test_basic_normalization(self, test_normalization_map, monkeypatch):
+        """Test basic normalization with OCR confidence strategy."""
+        test_text = "Tһis іs а test wіth ѕоmе homoglyphs."
+        expected = "This is a test with some homoglyphs."
+        
+        # Track parameters passed to OCRConfidenceAnalyzer
+        analyzer_params = {}
+        
+        # Mock the OCRConfidenceAnalyzer class
+        class MockOCRConfidenceAnalyzer:
+            def __init__(self, use_tesseract=True, confidence_threshold=0.7, font_path=None):
+                nonlocal analyzer_params
+                analyzer_params['use_tesseract'] = use_tesseract
+                analyzer_params['confidence_threshold'] = confidence_threshold
+                analyzer_params['font_path'] = font_path
+                self.tesseract_available = use_tesseract
+                
+            def analyze_text(self, text):
+                return [c for c in text if c in "һіаѕое"]
+                
+        # Mock the normalize_with_ocr function
+        def mock_normalize_with_ocr(text, mapping, suspicious_chars):
+            return expected
+            
+        # Apply the monkepatches
+        monkeypatch.setattr("silverspeak.homoglyphs.normalization.ocr_confidence.OCRConfidenceAnalyzer", MockOCRConfidenceAnalyzer)
+        monkeypatch.setattr("silverspeak.homoglyphs.normalization.ocr_confidence.normalize_with_ocr", mock_normalize_with_ocr)
+            
+        result = apply_ocr_confidence_strategy(
+            text=test_text,
+            mapping=test_normalization_map,
+            use_tesseract=False
+        )
+        
+        # Check that OCRConfidenceAnalyzer was created with correct parameters
+        assert analyzer_params['use_tesseract'] is False
+        assert analyzer_params['confidence_threshold'] == 0.7  # Default value
+        assert result == expected
+
+    def test_confidence_threshold(self, test_normalization_map, monkeypatch):
+        """Test the effect of confidence threshold on OCR strategy."""
+        test_text = "Tһis іs а test."
+        expected = "This is a test."
+        
+        # Track parameters passed to OCRConfidenceAnalyzer
+        analyzer_params = {}
+        
+        # Mock the OCRConfidenceAnalyzer class
+        class MockOCRConfidenceAnalyzer:
+            def __init__(self, use_tesseract=True, confidence_threshold=0.7, font_path=None):
+                nonlocal analyzer_params
+                analyzer_params['use_tesseract'] = use_tesseract
+                analyzer_params['confidence_threshold'] = confidence_threshold
+                analyzer_params['font_path'] = font_path
+                self.tesseract_available = use_tesseract
+                
+            def analyze_text(self, text):
+                return [c for c in text if c in "һіаѕое"]
+                
+        # Mock function for OCR processing
+        def mock_normalize_with_ocr(text, mapping, suspicious_chars):
+            return expected
+            
+        # Apply the monkepatches
+        monkeypatch.setattr("silverspeak.homoglyphs.normalization.ocr_confidence.OCRConfidenceAnalyzer", MockOCRConfidenceAnalyzer)
+        monkeypatch.setattr("silverspeak.homoglyphs.normalization.ocr_confidence.normalize_with_ocr", mock_normalize_with_ocr)
+            
+        # Set a custom confidence threshold
+        custom_threshold = 0.85
+        result = apply_ocr_confidence_strategy(
+            text=test_text,
+            mapping=test_normalization_map,
+            confidence_threshold=custom_threshold
+        )
+        
+        # Verify the threshold was passed correctly
+        assert analyzer_params['confidence_threshold'] == custom_threshold
+        assert result == expected
+        
+    def test_tesseract_flag(self, test_normalization_map, monkeypatch):
+        """Test the use_tesseract flag in OCR strategy."""
+        test_text = "Tһis іs а test."
+        expected = "This is a test."
+        
+        # Track if analyze_text was called with tesseract
+        mock_called_with = {'use_tesseract': None}
+        
+        # Mock the OCRConfidenceAnalyzer class
+        class MockOCRConfidenceAnalyzer:
+            def __init__(self, use_tesseract=True, confidence_threshold=0.7, font_path=None):
+                self.tesseract_available = use_tesseract
+                mock_called_with['use_tesseract'] = use_tesseract
+                
+            def analyze_text(self, text):
+                return [c for c in text if c in "һіаѕое"]
+        
+        # Mock function for OCR processing
+        def mock_normalize_with_ocr(text, mapping, suspicious_chars):
+            return expected
+            
+        # Apply monkepatches
+        monkeypatch.setattr("silverspeak.homoglyphs.normalization.ocr_confidence.OCRConfidenceAnalyzer", MockOCRConfidenceAnalyzer)
+        monkeypatch.setattr("silverspeak.homoglyphs.normalization.ocr_confidence.normalize_with_ocr", mock_normalize_with_ocr)
+        monkeypatch.setattr("silverspeak.homoglyphs.normalization.ocr_confidence.TESSERACT_AVAILABLE", True)
+        
+        # Test with tesseract enabled
+        result1 = apply_ocr_confidence_strategy(
+            text=test_text,
+            mapping=test_normalization_map,
+            use_tesseract=True
+        )
+        
+        # Test with tesseract disabled
+        result2 = apply_ocr_confidence_strategy(
+            text=test_text,
+            mapping=test_normalization_map,
+            use_tesseract=False
+        )
+        
+        assert result1 == expected
+        assert result2 == expected
+        assert mock_called_with['use_tesseract'] is False  # Last call should be with False
+
+
+class TestGraphBasedStrategy:
+    """Tests for the graph-based normalization strategy."""
+    
+    def test_basic_normalization(self, test_normalization_map, monkeypatch):
+        """Test basic normalization with graph-based strategy."""
+        test_text = "Tһis іs а test wіth ѕоmе homoglyphs."
+        expected = "This is a test with some homoglyphs."
+        
+        # Mock the CharacterGraph class
+        class MockCharacterGraph:
+            @classmethod
+            def build_from_normalization_map(cls, normalization_map):
+                mock_graph = MockCharacterGraph()
+                return mock_graph
+                
+            def compute_centrality(self, measure="degree"):
+                pass
+                
+            def get_central_character(self, chars):
+                # Return Latin version for each character
+                for c in chars:
+                    if c == 'һ': return 'h'
+                    if c == 'і': return 'i'
+                    if c == 'а': return 'a'
+                    if c == 'ѕ': return 's'
+                    if c == 'о': return 'o'
+                    if c == 'е': return 'e'
+                return chars[0]
+        
+        # Mock the GraphNormalizer class
+        class MockGraphNormalizer:
+            def __init__(self, graph, standard_chars):
+                self.graph = graph
+                self.standard_chars = standard_chars
+            
+            def normalize(self, text):
+                return expected
+        
+        # Mock extract_standard_characters function       
+        def mock_extract_standard_characters(mapping):
+            return set('abcdefghijklmnopqrstuvwxyz')
+                
+        # Apply the monkepatches
+        monkeypatch.setattr("silverspeak.homoglyphs.normalization.graph_based.CharacterGraph", MockCharacterGraph)
+        monkeypatch.setattr("silverspeak.homoglyphs.normalization.graph_based.GraphNormalizer", MockGraphNormalizer)
+        monkeypatch.setattr("silverspeak.homoglyphs.normalization.graph_based.extract_standard_characters", mock_extract_standard_characters)
+        
+        result = apply_graph_strategy(
+            text=test_text,
+            mapping=test_normalization_map
+        )
+        
+        assert result == expected
+    
+    def test_similarity_threshold(self, test_normalization_map, monkeypatch):
+        """Test providing a custom similarity threshold to the graph strategy."""
+        test_text = "Tһis іs а test."
+        expected = "This is a test."
+        
+        # Mock the CharacterGraph class
+        class MockCharacterGraph:
+            @classmethod
+            def build_from_normalization_map(cls, normalization_map):
+                return MockCharacterGraph()
+                
+            def compute_centrality(self, measure="degree"):
+                pass
+                
+            def get_central_character(self, chars):
+                return 'h' if 'һ' in chars else chars[0]
+        
+        # Mock the GraphNormalizer class
+        class MockGraphNormalizer:
+            def __init__(self, graph, standard_chars):
+                self.graph = graph
+                self.standard_chars = standard_chars
+            
+            def normalize(self, text):
+                return expected
+        
+        # Mock extract_standard_characters function       
+        def mock_extract_standard_characters(mapping):
+            return set('abcdefghijklmnopqrstuvwxyz')
+                
+        # Apply the monkepatches
+        monkeypatch.setattr("silverspeak.homoglyphs.normalization.graph_based.CharacterGraph", MockCharacterGraph)
+        monkeypatch.setattr("silverspeak.homoglyphs.normalization.graph_based.GraphNormalizer", MockGraphNormalizer)
+        monkeypatch.setattr("silverspeak.homoglyphs.normalization.graph_based.extract_standard_characters", mock_extract_standard_characters)
+        
+        # Set a custom similarity threshold (even though it's not used by the implementation)
+        # This test just verifies the function accepts the parameter without error
+        result = apply_graph_strategy(
+            text=test_text,
+            mapping=test_normalization_map,
+            similarity_threshold=0.8
+        )
+        
+        # Just verify the function ran successfully
+        assert result == expected
+    
+    def test_centrality_measure(self, test_normalization_map, monkeypatch):
+        """Test different centrality measures in the graph strategy."""
+        test_text = "Tһis іs а test."
+        expected = "This is a test."
+        
+        # Track the centrality measure parameter
+        centrality_measure_used = {'value': None}
+        
+        # Mock the CharacterGraph class
+        class MockCharacterGraph:
+            @classmethod
+            def build_from_normalization_map(cls, normalization_map):
+                return MockCharacterGraph()
+                
+            def compute_centrality(self, measure="degree"):
+                centrality_measure_used['value'] = measure
+                
+            def get_central_character(self, chars):
+                return chars[0]
+        
+        # Mock the GraphNormalizer class to use the centrality measure
+        class MockGraphNormalizer:
+            def __init__(self, graph, standard_chars):
+                self.graph = graph
+                self.standard_chars = standard_chars
+                # Use any custom centrality measure passed in kwargs
+                measure = kwargs.get('centrality_measure', 'degree')
+                graph.compute_centrality(measure=measure)
+            
+            def normalize(self, text):
+                return expected
+        
+        # Mock extract_standard_characters function       
+        def mock_extract_standard_characters(mapping):
+            return set('abcdefghijklmnopqrstuvwxyz')
+        
+        # Store the kwargs
+        kwargs = {}
+        
+        # Mock the apply_graph_strategy function
+        original_apply_graph_strategy = apply_graph_strategy
+        
+        def mocked_apply_graph_strategy(text, mapping, **kw):
+            nonlocal kwargs
+            kwargs = kw
+            return original_apply_graph_strategy(text, mapping, **kw)
+        
+        # Apply the monkepatches
+        monkeypatch.setattr("silverspeak.homoglyphs.normalization.graph_based.CharacterGraph", MockCharacterGraph)
+        monkeypatch.setattr("silverspeak.homoglyphs.normalization.graph_based.GraphNormalizer", MockGraphNormalizer)
+        monkeypatch.setattr("silverspeak.homoglyphs.normalization.graph_based.extract_standard_characters", mock_extract_standard_characters)
+        monkeypatch.setattr("test_normalization_strategies.apply_graph_strategy", mocked_apply_graph_strategy)
+        
+        # Set a custom centrality measure
+        custom_centrality = "betweenness"
+        result = apply_graph_strategy(
+            text=test_text,
+            mapping=test_normalization_map,
+            centrality_measure=custom_centrality
+        )
+        
+        # Verify the centrality measure was passed correctly
+        assert kwargs.get('centrality_measure') == custom_centrality
+        # If centrality_measure isn't being used in the implementation, 
+        # just verify the test passes without error
+        assert result == expected
+
+
 class TestLoggingConfiguration:
     """Tests for the logging configuration functionality."""
     
@@ -332,6 +914,9 @@ class TestLoggingConfiguration:
         custom_format = "%(levelname)s: %(message)s"
         with unittest.mock.patch("logging.basicConfig") as mock_basic_config:
             configure_logging(format_string=custom_format)
+            mock_basic_config.assert_called_once()
+            args, kwargs = mock_basic_config.call_args
+            assert kwargs["format"] == custom_format
             mock_basic_config.assert_called_once()
             args, kwargs = mock_basic_config.call_args
             assert kwargs["format"] == custom_format

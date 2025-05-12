@@ -21,6 +21,32 @@ transformers = "^4.51.3"
 torch = "^2.6.0"
 tomli = "^2.0.1"
 
+[tool.poetry.group.spell-check]
+optional = true
+
+[tool.poetry.group.spell-check.dependencies]
+symspellpy = "^6.7.0"
+pyspellchecker = "^0.7.1"
+python-Levenshtein = "^0.21.0"
+
+[tool.poetry.group.contextual-spell-check]
+optional = true
+
+[tool.poetry.group.contextual-spell-check.dependencies]
+neuspell = "^1.0.0"
+
+[tool.poetry.group.ngram-analysis]
+optional = true
+
+[tool.poetry.group.ngram-analysis.dependencies]
+nltk = "^3.8.1"
+
+[tool.poetry.group.graph-analysis]
+optional = true
+
+[tool.poetry.group.graph-analysis.dependencies]
+networkx = "^3.1"
+
 [tool.poetry.group.dev.dependencies]
 ipykernel = "^6.29.5"
 pytest = "^8.3.5"
