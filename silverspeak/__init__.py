@@ -36,10 +36,10 @@ except (ImportError, ModuleNotFoundError):
     else:
         __version__ = "unknown"
 
-from silverspeak.homoglyphs.greedy_attack import greedy_attack
+from silverspeak.homoglyphs.attacks.greedy_attack import greedy_attack
 from silverspeak.homoglyphs.homoglyph_replacer import HomoglyphReplacer
 from silverspeak.homoglyphs.normalize import normalize_text
-from silverspeak.homoglyphs.random_attack import random_attack
+from silverspeak.homoglyphs.attacks.random_attack import random_attack
 from silverspeak.homoglyphs.utils import NormalizationStrategies, TypesOfHomoglyphs
 
 

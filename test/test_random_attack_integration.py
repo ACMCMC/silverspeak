@@ -1,5 +1,5 @@
 import pytest
-from silverspeak.homoglyphs.random_attack import random_attack
+from silverspeak.homoglyphs.attacks.random_attack import random_attack
 from silverspeak.homoglyphs.normalize import normalize_text as normalize
 from silverspeak.homoglyphs.utils import NormalizationStrategies, TypesOfHomoglyphs
 import math

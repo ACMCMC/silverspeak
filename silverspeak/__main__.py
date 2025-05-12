@@ -28,9 +28,9 @@ from pathlib import Path
 from typing import List, Optional, TextIO, Union
 
 from silverspeak import __version__
-from silverspeak.homoglyphs.greedy_attack import greedy_attack
+from silverspeak.homoglyphs.attacks.greedy_attack import greedy_attack
 from silverspeak.homoglyphs.normalize import normalize_text
-from silverspeak.homoglyphs.random_attack import random_attack
+from silverspeak.homoglyphs.attacks.random_attack import random_attack
 from silverspeak.homoglyphs.utils import NormalizationStrategies, TypesOfHomoglyphs
 
 

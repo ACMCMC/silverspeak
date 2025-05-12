@@ -281,6 +281,207 @@ class HomoglyphReplacer:
 
         return script_normalization_map
 
+    def get_homoglyph_for_char(
+        self,
+        char: str,
+        same_script: bool = False,
+        same_block: bool = False,
+        dominant_script: Optional[str] = None,
+        dominant_block: Optional[str] = None,
+        context: Optional[str] = None,
+        context_window_size: int = 10,
+    ) -> Optional[str]:
+        """
+        Get a homoglyph replacement for a character, considering context.
+        
+        This method selects an optimal homoglyph replacement for a character by analyzing
+        the surrounding context and choosing a replacement that best matches the Unicode
+        properties of the surrounding text.
+        
+        Args:
+            char (str): The character to replace with a homoglyph.
+            same_script (bool): Whether to use only homoglyphs from the same Unicode script.
+                Defaults to False.
+            same_block (bool): Whether to use only homoglyphs from the same Unicode block.
+                Defaults to False.
+            dominant_script (Optional[str]): The dominant script to use for filtering.
+                If None and same_script is True, will be automatically detected.
+            dominant_block (Optional[str]): The dominant block to use for filtering.
+                If None and same_block is True, will be automatically detected.
+            context (Optional[str]): The surrounding text context for property matching.
+                If None, context-based selection will not be used.
+            context_window_size (int): Size of the context window when context is provided.
+                Defaults to 10.
+                
+        Returns:
+            Optional[str]: A homoglyph replacement, or None if no suitable replacement is found.
+        """
+        if not char or char not in self.chars_map or not self.chars_map[char]:
+            return None
+            
+        # Get all possible homoglyph replacements for this character
+        all_homoglyphs = self.chars_map[char]
+        
+        # Filter by script if requested
+        if same_script and dominant_script:
+            all_homoglyphs = [h for h in all_homoglyphs if unicodedataplus.script(h) == dominant_script]
+            
+        # Filter by block if requested
+        if same_block and dominant_block:
+            all_homoglyphs = [h for h in all_homoglyphs if unicodedataplus.block(h) == dominant_block]
+            
+        # If no homoglyphs remain after filtering, return None
+        if not all_homoglyphs:
+            return None
+            
+        # If context is provided, use it for property matching
+        if context:
+            # Dictionary of Unicode property extraction functions
+            PROPERTY_FNS = {
+                "script": unicodedataplus.script,
+                "block": unicodedataplus.block,
+                "category": unicodedata.category,
+                "bidirectional": unicodedata.bidirectional,
+                "east_asian_width": unicodedata.east_asian_width,
+            }
+            
+            # Define property weights for scoring
+            PROPERTY_WEIGHTS = {
+                "block": 10,       # Highest priority
+                "category": 5,     # Medium-high priority
+                "script": 3,       # Medium priority
+                "bidirectional": 2, # Medium-low priority
+                "east_asian_width": 1, # Low priority
+            }
+            
+            # Score each possible homoglyph
+            property_scores = []
+            for homoglyph in all_homoglyphs:
+                if homoglyph == char:
+                    continue  # Skip the character itself
+                
+                score = 0
+                
+                # Extract properties of the homoglyph
+                homoglyph_props = {prop: PROPERTY_FNS[prop](homoglyph) for prop in PROPERTY_FNS}
+                
+                # Calculate context property matches
+                for ctx_char in context:
+                    for prop, weight in PROPERTY_WEIGHTS.items():
+                        if PROPERTY_FNS[prop](ctx_char) == homoglyph_props[prop]:
+                            score += weight
+                
+                # Add bonus for specific property combinations in context
+                for ctx_char in context:
+                    # Block + script combination bonus
+                    if (PROPERTY_FNS["block"](ctx_char) == homoglyph_props["block"] and 
+                        PROPERTY_FNS["script"](ctx_char) == homoglyph_props["script"]):
+                        score += 3
+                    
+                    # Block + category combination bonus
+                    if (PROPERTY_FNS["block"](ctx_char) == homoglyph_props["block"] and 
+                        PROPERTY_FNS["category"](ctx_char) == homoglyph_props["category"]):
+                        score += 2
+                        
+                    # Script + category combination bonus
+                    if (PROPERTY_FNS["script"](ctx_char) == homoglyph_props["script"] and 
+                        PROPERTY_FNS["category"](ctx_char) == homoglyph_props["category"]):
+                        score += 2
+                
+                property_scores.append((homoglyph, score))
+            
+            # Sort by score (highest first) and select the best homoglyph
+            if property_scores:
+                return max(property_scores, key=lambda x: x[1])[0]
+            
+        # If no context or no scored homoglyphs, just return a random one
+        return self.random_state.choice(all_homoglyphs)
+
+    def score_homoglyph_for_context(
+        self,
+        homoglyph: str,
+        char: str,
+        context: str,
+        context_window_size: int = 10,
+    ) -> float:
+        """
+        Score a homoglyph based on how well it matches the surrounding context.
+        
+        This method evaluates a potential homoglyph replacement by comparing its Unicode
+        properties with those of the surrounding characters, assigning a score that
+        reflects how well the homoglyph fits within the given context.
+        
+        Args:
+            homoglyph (str): The homoglyph to evaluate.
+            char (str): The original character that would be replaced.
+            context (str): The surrounding text context for property matching.
+            context_window_size (int): Size of the context window. Defaults to 10.
+                
+        Returns:
+            float: A score indicating how well the homoglyph matches the context.
+                Higher scores indicate better matches.
+        """
+        # Dictionary of Unicode property extraction functions
+        PROPERTY_FNS = {
+            "script": unicodedataplus.script,
+            "block": unicodedataplus.block,
+            "category": unicodedata.category,
+            "bidirectional": unicodedata.bidirectional,
+            "east_asian_width": unicodedata.east_asian_width,
+        }
+        
+        # Define property weights for scoring
+        PROPERTY_WEIGHTS = {
+            "block": 10,       # Highest priority
+            "category": 5,     # Medium-high priority
+            "script": 3,       # Medium priority
+            "bidirectional": 2, # Medium-low priority
+            "east_asian_width": 1, # Low priority
+        }
+        
+        # Skip if the homoglyph is the same as the character
+        if homoglyph == char:
+            return 0.0
+            
+        score = 0.0
+        
+        # Extract properties of the homoglyph
+        try:
+            homoglyph_props = {prop: PROPERTY_FNS[prop](homoglyph) for prop in PROPERTY_FNS}
+            
+            # Calculate context property matches
+            for ctx_char in context:
+                for prop, weight in PROPERTY_WEIGHTS.items():
+                    if PROPERTY_FNS[prop](ctx_char) == homoglyph_props[prop]:
+                        score += weight
+            
+            # Add bonus for specific property combinations in context
+            for ctx_char in context:
+                # Block + script combination bonus
+                if (PROPERTY_FNS["block"](ctx_char) == homoglyph_props["block"] and 
+                    PROPERTY_FNS["script"](ctx_char) == homoglyph_props["script"]):
+                    score += 3
+                
+                # Block + category combination bonus
+                if (PROPERTY_FNS["block"](ctx_char) == homoglyph_props["block"] and 
+                    PROPERTY_FNS["category"](ctx_char) == homoglyph_props["category"]):
+                    score += 2
+                    
+                # Script + category combination bonus
+                if (PROPERTY_FNS["script"](ctx_char) == homoglyph_props["script"] and 
+                    PROPERTY_FNS["category"](ctx_char) == homoglyph_props["category"]):
+                    score += 2
+                    
+            # Normalize score by context length to make it comparable across different contexts
+            if len(context) > 0:
+                score = score / len(context)
+                
+        except Exception as e:
+            logger.error(f"Error scoring homoglyph '{homoglyph}': {e}")
+            return 0.0
+            
+        return score
+
     def normalize(
         self,
         text: str,
