@@ -308,147 +308,131 @@ class TestLanguageModelStrategy:
 class TestSpellCheckStrategy:
     """Tests for the spell check normalization strategy."""
     
-    @pytest.mark.xfail(reason="Requires symspellpy and pyspellchecker dependencies")
     def test_basic_spell_check(self):
         """Test basic spell check functionality."""
-        try:
-            from silverspeak.homoglyphs.normalization.spell_check import apply_spell_check_strategy
-            
-            # Text with homoglyphs (Cyrillic characters)
-            text = "Tһis іs а tеst."  # Contains homoglyphs
-            
-            result = apply_spell_check_strategy(
-                text=text,
-                normalization_map={
-                    "һ": ["h"],  # Cyrillic 'һ' to Latin 'h'
-                    "і": ["i"],  # Cyrillic 'і' to Latin 'i'
-                    "а": ["a"],  # Cyrillic 'а' to Latin 'a'
-                    "е": ["e"],  # Cyrillic 'е' to Latin 'e'
-                },
-                language="en"
-            )
-            
-            assert result == "This is a test."
-        except ImportError:
-            pytest.skip("Required dependencies not installed")
+        from silverspeak.homoglyphs.normalization.spell_check import apply_spell_check_strategy
+        
+        # Text with homoglyphs (Cyrillic characters)
+        text = "Tһis іs а tеst."  # Contains homoglyphs
+        
+        result = apply_spell_check_strategy(
+            text=text,
+            normalization_map={
+                "һ": ["h"],  # Cyrillic 'һ' to Latin 'h'
+                "і": ["i"],  # Cyrillic 'і' to Latin 'i'
+                "а": ["a"],  # Cyrillic 'а' to Latin 'a'
+                "е": ["e"],  # Cyrillic 'е' to Latin 'e'
+            },
+            language="en"
+        )
+        
+        assert result == "This is a test."
     
-    @pytest.mark.xfail(reason="Requires symspellpy and pyspellchecker dependencies")
     def test_custom_dictionary(self):
         """Test spell check with custom dictionary."""
-        try:
-            from silverspeak.homoglyphs.normalization.spell_check import apply_spell_check_strategy
-            
-            # Text with homoglyphs and domain-specific terms
-            text = "SіlvеrSреаk"  # Contains homoglyphs
-            
-            result = apply_spell_check_strategy(
-                text=text,
-                normalization_map={
-                    "і": ["i"],  # Cyrillic 'і' to Latin 'i'
-                    "е": ["e"],  # Cyrillic 'е' to Latin 'e'
-                    "р": ["p"],  # Cyrillic 'р' to Latin 'p'
-                    "а": ["a"],  # Cyrillic 'а' to Latin 'a'
-                },
-                language="en",
-                custom_words=["SilverSpeak"]
-            )
-            
-            assert result == "SilverSpeak"
-        except ImportError:
-            pytest.skip("Required dependencies not installed")
+        from silverspeak.homoglyphs.normalization.spell_check import apply_spell_check_strategy
+        
+        # Text with homoglyphs and domain-specific terms
+        text = "SіlvеrSреаk"  # Contains homoglyphs
+        
+        result = apply_spell_check_strategy(
+            text=text,
+            normalization_map={
+                "і": ["i"],  # Cyrillic 'і' to Latin 'i'
+                "е": ["e"],  # Cyrillic 'е' to Latin 'e'
+                "р": ["p"],  # Cyrillic 'р' to Latin 'p'
+                "а": ["a"],  # Cyrillic 'а' to Latin 'a'
+            },
+            language="en",
+            custom_words=["SilverSpeak"]
+        )
+        
+        assert result == "SilverSpeak"
 
 
 class TestLLMPromptStrategy:
     """Tests for the LLM prompt-based normalization strategy."""
     
-    @pytest.mark.xfail(reason="Requires transformers dependency")
     def test_llm_prompt_basic(self):
         """Test basic LLM prompt strategy."""
-        try:
-            from silverspeak.homoglyphs.normalization.llm_prompt import apply_llm_prompt_strategy
-            import unittest.mock
+        from silverspeak.homoglyphs.normalization.llm_prompt import apply_llm_prompt_strategy
+        import unittest.mock
+        
+        # Text with homoglyphs
+        text = "Tһis іs а tеst."  # Contains homoglyphs
+        
+        # Mock the pipeline
+        with unittest.mock.patch("silverspeak.homoglyphs.normalization.llm_prompt.pipeline") as mock_pipeline:
+            mock_pipe_instance = unittest.mock.MagicMock()
+            mock_pipe_instance.return_value = [{"generated_text": "This is a test."}]
+            mock_pipeline.return_value = mock_pipe_instance
             
-            # Text with homoglyphs
-            text = "Tһis іs а tеst."  # Contains homoglyphs
+            result = apply_llm_prompt_strategy(
+                text=text,
+                normalization_map={
+                    "һ": ["h"],
+                    "і": ["i"],
+                    "а": ["a"],
+                    "е": ["e"]
+                }
+            )
             
-            # Mock the pipeline
-            with unittest.mock.patch("silverspeak.homoglyphs.normalization.llm_prompt.pipeline") as mock_pipeline:
-                mock_pipe_instance = unittest.mock.MagicMock()
-                mock_pipe_instance.return_value = [{"generated_text": "This is a test."}]
-                mock_pipeline.return_value = mock_pipe_instance
+            # Verify the result matches the mocked return value
+            assert result == "This is a test."
+            
+            # Verify the pipeline was called with the expected model name
+            mock_pipeline.assert_called_once()
+
+
+class TestLanguageModelStrategy:
+    """Tests for the language model normalization strategy."""
+    
+    def test_language_model_word_level(self):
+        """Test language model strategy with word-level masking."""
+        import unittest.mock
+        import torch
+        from silverspeak.homoglyphs.normalization.language_model import apply_language_model_strategy
+        
+        # Mock the language model and tokenizer
+        with unittest.mock.patch("silverspeak.homoglyphs.normalization.language_model.AutoModelForMaskedLM") as mock_model_class:
+            with unittest.mock.patch("silverspeak.homoglyphs.normalization.language_model.AutoTokenizer") as mock_tokenizer_class:
+                mock_model = unittest.mock.MagicMock()
+                mock_tokenizer = unittest.mock.MagicMock()
                 
-                result = apply_llm_prompt_strategy(
+                # Mock the tokenize method
+                mock_tokenizer.tokenize.return_value = ["this", "is", "a", "test"]
+                
+                # Mock the encode method
+                mock_tokenizer.encode.return_value = [101, 1996, 2003, 1037, 3231, 102]
+                
+                # Mock the convert_ids_to_tokens method
+                mock_tokenizer.convert_ids_to_tokens.return_value = ["[CLS]", "this", "is", "a", "test", "[SEP]"]
+                
+                # Mock the decode method
+                mock_tokenizer.decode.return_value = "this is a test"
+                
+                # Mock the __call__ method of the model
+                mock_model.return_value.logits = unittest.mock.MagicMock()
+                
+                mock_model_class.from_pretrained.return_value = mock_model
+                mock_tokenizer_class.from_pretrained.return_value = mock_tokenizer
+                
+                # Text with homoglyphs
+                text = "Tһis іs а tеst."  # Contains homoglyphs
+                
+                result = apply_language_model_strategy(
                     text=text,
                     normalization_map={
                         "һ": ["h"],
                         "і": ["i"],
                         "а": ["a"],
                         "е": ["e"]
-                    }
+                    },
+                    word_level=True
                 )
                 
-                # Verify the result matches the mocked return value
-                assert result == "This is a test."
-                
-                # Verify the pipeline was called with the expected model name
-                mock_pipeline.assert_called_once()
-        except ImportError:
-            pytest.skip("Required dependencies not installed")
-
-
-class TestLanguageModelStrategy:
-    """Tests for the language model normalization strategy."""
-    
-    @pytest.mark.xfail(reason="Requires transformers and torch dependencies")
-    def test_language_model_word_level(self):
-        """Test language model strategy with word-level masking."""
-        try:
-            import unittest.mock
-            import torch
-            from silverspeak.homoglyphs.normalization.language_model import apply_language_model_strategy
-            
-            # Mock the language model and tokenizer
-            with unittest.mock.patch("silverspeak.homoglyphs.normalization.language_model.AutoModelForMaskedLM") as mock_model_class:
-                with unittest.mock.patch("silverspeak.homoglyphs.normalization.language_model.AutoTokenizer") as mock_tokenizer_class:
-                    mock_model = unittest.mock.MagicMock()
-                    mock_tokenizer = unittest.mock.MagicMock()
-                    
-                    # Mock the tokenize method
-                    mock_tokenizer.tokenize.return_value = ["this", "is", "a", "test"]
-                    
-                    # Mock the encode method
-                    mock_tokenizer.encode.return_value = [101, 1996, 2003, 1037, 3231, 102]
-                    
-                    # Mock the convert_ids_to_tokens method
-                    mock_tokenizer.convert_ids_to_tokens.return_value = ["[CLS]", "this", "is", "a", "test", "[SEP]"]
-                    
-                    # Mock the decode method
-                    mock_tokenizer.decode.return_value = "this is a test"
-                    
-                    # Mock the __call__ method of the model
-                    mock_model.return_value.logits = unittest.mock.MagicMock()
-                    
-                    mock_model_class.from_pretrained.return_value = mock_model
-                    mock_tokenizer_class.from_pretrained.return_value = mock_tokenizer
-                    
-                    # Text with homoglyphs
-                    text = "Tһis іs а tеst."  # Contains homoglyphs
-                    
-                    result = apply_language_model_strategy(
-                        text=text,
-                        normalization_map={
-                            "һ": ["h"],
-                            "і": ["i"],
-                            "а": ["a"],
-                            "е": ["e"]
-                        },
-                        word_level=True
-                    )
-                    
-                    # With our mocks, we expect the result to be the mocked decode return value
-                    assert result == "this is a test"
-        except ImportError:
-            pytest.skip("Required dependencies not installed")
+                # With our mocks, we expect the result to be the mocked decode return value
+                assert result == "this is a test"
 
 
 class TestNgramStrategy:
