@@ -27,7 +27,8 @@ def score_homoglyph_for_context(
     
     This method evaluates a potential homoglyph replacement by comparing its Unicode
     properties with those of the surrounding characters, assigning a score that
-    reflects how well the homoglyph fits within the given context.
+    reflects how well the homoglyph fits within the given context. The scoring now
+    takes into account the prevalence of each property in the context window.
     
     Args:
         homoglyph (str): The homoglyph to evaluate.
@@ -48,8 +49,8 @@ def score_homoglyph_for_context(
         "east_asian_width": unicodedata.east_asian_width,
     }
     
-    # Define property weights for scoring
-    PROPERTY_WEIGHTS = {
+    # Base property weights - will be adjusted based on context prevalence
+    BASE_PROPERTY_WEIGHTS = {
         "block": 10,       # Highest priority
         "category": 5,     # Medium-high priority
         "script": 3,       # Medium priority
@@ -60,40 +61,86 @@ def score_homoglyph_for_context(
     # Skip if the homoglyph is the same as the character
     if homoglyph == char:
         return 0.0
+    
+    if not context or len(context) == 0:
+        return 0.0
         
     score = 0.0
     
-    # Extract properties of the homoglyph
     try:
+        # Extract properties of the homoglyph
         homoglyph_props = {prop: PROPERTY_FNS[prop](homoglyph) for prop in PROPERTY_FNS}
         
-        # Calculate context property matches
-        for ctx_char in context:
-            for prop, weight in PROPERTY_WEIGHTS.items():
-                if PROPERTY_FNS[prop](ctx_char) == homoglyph_props[prop]:
-                    score += weight
+        # Calculate property prevalence in the context
+        property_prevalence = {}
+        for prop in PROPERTY_FNS:
+            # Count occurrences of each property value in the context
+            prop_values = {}
+            for ctx_char in context:
+                try:
+                    prop_value = PROPERTY_FNS[prop](ctx_char)
+                    prop_values[prop_value] = prop_values.get(prop_value, 0) + 1
+                except Exception:
+                    # Skip if we can't get property for this character
+                    continue
+            
+            # Calculate prevalence for each property value
+            for prop_value, count in prop_values.items():
+                prevalence = count / len(context)
+                property_prevalence[(prop, prop_value)] = prevalence
         
-        # Add bonus for specific property combinations in context
-        for ctx_char in context:
-            # Block + script combination bonus
-            if (PROPERTY_FNS["block"](ctx_char) == homoglyph_props["block"] and 
-                PROPERTY_FNS["script"](ctx_char) == homoglyph_props["script"]):
-                score += 3
-            
-            # Block + category combination bonus
-            if (PROPERTY_FNS["block"](ctx_char) == homoglyph_props["block"] and 
-                PROPERTY_FNS["category"](ctx_char) == homoglyph_props["category"]):
-                score += 2
+        # Calculate context-weighted scores for property matches
+        for prop, base_weight in BASE_PROPERTY_WEIGHTS.items():
+            try:
+                homoglyph_prop_value = homoglyph_props[prop]
+                # Use the prevalence as a weight factor for this property
+                prevalence = property_prevalence.get((prop, homoglyph_prop_value), 0)
+                # The more common this property is in the context, the more important it is
+                context_weight = base_weight * prevalence
                 
-            # Script + category combination bonus
-            if (PROPERTY_FNS["script"](ctx_char) == homoglyph_props["script"] and 
-                PROPERTY_FNS["category"](ctx_char) == homoglyph_props["category"]):
-                score += 2
+                # Calculate matches for this property
+                matches = 0
+                for ctx_char in context:
+                    if PROPERTY_FNS[prop](ctx_char) == homoglyph_prop_value:
+                        matches += 1
                 
-        # Normalize score by context length to make it comparable across different contexts
-        if len(context) > 0:
-            score = score / len(context)
-            
+                # Add weighted score based on matches and context-adjusted weight
+                if len(context) > 0:
+                    match_score = (matches / len(context)) * context_weight
+                    score += match_score
+            except Exception as e:
+                logger.debug(f"Error calculating score for property {prop}: {e}")
+                continue
+        
+        # Add bonus for specific property combinations, also weighted by prevalence
+        combination_scores = {
+            ("block", "script"): 3,  # Block + script combination bonus
+            ("block", "category"): 2,  # Block + category combination bonus
+            ("script", "category"): 2,  # Script + category combination bonus
+        }
+        
+        for (prop1, prop2), bonus_weight in combination_scores.items():
+            try:
+                # Get property values for the homoglyph
+                prop1_value = homoglyph_props[prop1]
+                prop2_value = homoglyph_props[prop2]
+                
+                # Count combined matches in context
+                combo_matches = 0
+                for ctx_char in context:
+                    if (PROPERTY_FNS[prop1](ctx_char) == prop1_value and
+                        PROPERTY_FNS[prop2](ctx_char) == prop2_value):
+                        combo_matches += 1
+                
+                # Calculate combined prevalence
+                combo_prevalence = combo_matches / len(context) if len(context) > 0 else 0
+                
+                # Add weighted score for property combination
+                score += combo_prevalence * bonus_weight
+            except Exception as e:
+                logger.debug(f"Error calculating combo score for {prop1}+{prop2}: {e}")
+                continue
+        
     except Exception as e:
         logger.error(f"Error scoring homoglyph '{homoglyph}': {e}")
         return 0.0
