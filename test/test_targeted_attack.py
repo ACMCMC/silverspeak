@@ -30,9 +30,9 @@ def test_get_homoglyph_for_char_basic(replacer):
     result = replacer.get_homoglyph_for_char('a')
     assert result is not None
     assert result != 'a'
-    
+
     # Test with a character that doesn't exist in the mapping
-    result = replacer.get_homoglyph_for_char('非')  # A character unlikely to have homoglyphs
+    result = replacer.get_homoglyph_for_char("丛")  # A character unlikely to have homoglyphs
     assert result is None
 
 

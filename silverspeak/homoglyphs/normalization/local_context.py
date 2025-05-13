@@ -13,6 +13,8 @@ from typing import List, Mapping
 
 import unicodedataplus
 
+from ..unicode_scoring import score_homoglyph_for_context
+
 logger = logging.getLogger(__name__)
 
 
@@ -51,19 +53,9 @@ def apply_local_context_strategy(
         logging.warning("Empty normalization map provided")
         return text
 
-    # Dictionary of Unicode property extraction functions
-    PROPERTY_FNS = {
-        "script": unicodedataplus.script,
-        "block": unicodedataplus.block,
-        "category": unicodedataplus.category,
-        "vertical_orientation": unicodedataplus.vertical_orientation,
-        "bidirectional": unicodedata.bidirectional,
-        "east_asian_width": unicodedata.east_asian_width,
-        # These properties are not used in the current implementation because they are not useful - just keep them here for reference but actually it doesn't make sense to use them because the surrounding characters are not expected to share these properties
-        # "combining": unicodedata.combining,
-        # "mirrored": unicodedata.mirrored,
-    }
-
+    # We'll use the scoring functionality from unicode_scoring module
+    # No need for property extraction functions here
+    
     # Process text character by character, analyzing context windows
     replaced_text = ""
     for i, char in enumerate(text):
@@ -83,65 +75,18 @@ def apply_local_context_strategy(
                     context_window = text[: min(N, len(text))]
                 elif end == len(text):
                     context_window = text[-min(N, len(text)) :]
-
-            # Extract Unicode properties from the context window
-            try:
-                properties = {prop: [PROPERTY_FNS[prop](c) for c in context_window] for prop in PROPERTY_FNS}
-            except Exception as e:
-                logging.error(f"Error extracting Unicode properties: {e}")
-                replaced_text += char
-                continue
-
-            # Define property weights for hierarchical scoring
-            PROPERTY_WEIGHTS = {
-                "block": 10,       # Highest priority
-                "category": 5,     # Third highest priority
-                "script": 3,       # Second highest priority
-                "bidirectional": 2,
-                "east_asian_width": 1,
-                "vertical_orientation": 1,
-            }
             
-            # Calculate weighted property matching scores for each possible replacement
+            # Score each possible replacement based on how well it matches the context window
             scores = []
             for possible_char in possible_chars:
                 try:
-                    # Initialize score
-                    score = 0
-                    
-                    # Extract properties of the possible character once
-                    char_props = {prop: PROPERTY_FNS[prop](possible_char) for prop in PROPERTY_FNS}
-                    
-                    # Count weighted matches for each property
-                    for prop, weight in PROPERTY_WEIGHTS.items():
-                        context_values = properties[prop]
-                        # Add weight for each match in context
-                        matches = sum(char_props[prop] == value for value in context_values)
-                        score += matches * weight
-                    
-                    # Add bonus points for specific property combinations
-                    for ctx_index, _ in enumerate(context_window):
-                        combo_bonus = 0
-                        # Check for block + script combination
-                        if (ctx_index < len(context_window) and 
-                            char_props["block"] == properties["block"][ctx_index] and 
-                            char_props["script"] == properties["script"][ctx_index]):
-                            combo_bonus += 3
-                        
-                        # Check for block + category combination
-                        if (ctx_index < len(context_window) and 
-                            char_props["block"] == properties["block"][ctx_index] and 
-                            char_props["category"] == properties["category"][ctx_index]):
-                            combo_bonus += 2
-                            
-                        # Check for script + category combination
-                        if (ctx_index < len(context_window) and 
-                            char_props["script"] == properties["script"][ctx_index] and 
-                            char_props["category"] == properties["category"][ctx_index]):
-                            combo_bonus += 2
-                            
-                        score += combo_bonus
-                    
+                    # Use the score_homoglyph_for_context function from unicode_scoring
+                    score = score_homoglyph_for_context(
+                        homoglyph=possible_char,
+                        char=char,
+                        context=context_window,
+                        context_window_size=N,
+                    )
                     scores.append((possible_char, score))
                 except Exception as e:
                     logging.error(f"Error calculating score for '{possible_char}': {e}")
