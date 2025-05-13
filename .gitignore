@@ -6,3 +6,13 @@ results_csv/
 *.pickle
 dist/
 docs/build
+.pytest_cache/
+*.egg-info/
+*.egg
+*.log
+*.pdb
+*.coverage
+*.cover
+.mypy_cache/
+.vscode/
+.DS_Store
