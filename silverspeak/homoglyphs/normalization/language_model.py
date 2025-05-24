@@ -16,18 +16,64 @@ import re
 from collections import defaultdict
 from typing import Dict, List, Mapping, Optional, Set, Tuple, Union
 
-import torch
-import transformers
-
 logger = logging.getLogger(__name__)
 
+# Global flags for lazy loading
+_TORCH_AVAILABLE = None
+_TRANSFORMERS_AVAILABLE = None
+_torch = None
+_transformers = None
 
-@torch.inference_mode()
+def _check_torch_availability():
+    """Lazy check for PyTorch availability."""
+    global _TORCH_AVAILABLE, _torch
+    if _TORCH_AVAILABLE is None:
+        try:
+            import torch
+            _torch = torch
+            _TORCH_AVAILABLE = True
+        except ImportError:
+            _torch = None
+            _TORCH_AVAILABLE = False
+            logger.warning(
+                "PyTorch not available, language model strategy will not work. "
+                "Install with: pip install torch"
+            )
+    return _TORCH_AVAILABLE
+
+def _check_transformers_availability():
+    """Lazy check for Transformers availability."""
+    global _TRANSFORMERS_AVAILABLE, _transformers
+    if _TRANSFORMERS_AVAILABLE is None:
+        try:
+            import transformers
+            _transformers = transformers
+            _TRANSFORMERS_AVAILABLE = True
+        except ImportError:
+            _transformers = None
+            _TRANSFORMERS_AVAILABLE = False
+            logger.warning(
+                "Transformers not available, language model strategy will not work. "
+                "Install with: pip install transformers"
+            )
+    return _TRANSFORMERS_AVAILABLE
+
+def _get_torch():
+    """Get PyTorch module, loading it lazily if needed."""
+    _check_torch_availability()
+    return _torch
+
+def _get_transformers():
+    """Get Transformers module, loading it lazily if needed."""
+    _check_transformers_availability()
+    return _transformers
+
+
 def apply_language_model_strategy(
     text: str,
     mapping: Mapping[str, List[str]],
-    language_model: Optional[transformers.PreTrainedModel] = None,
-    tokenizer: Optional[transformers.PreTrainedTokenizer] = None,
+    language_model=None,  # Optional[transformers.PreTrainedModel] 
+    tokenizer=None,  # Optional[transformers.PreTrainedTokenizer]
     model_name: str = "bert-base-multilingual-cased",
     batch_size: int = 8,
     max_length: int = 512,
@@ -82,16 +128,49 @@ def apply_language_model_strategy(
         maintain the semantic coherence of the original text. The word-level approach is
         particularly effective for handling homoglyphs that affect tokenization.
     """
-    try:
-        import torch
-        from transformers import AutoModelForMaskedLM, AutoTokenizer
-    except ImportError:
+    # Check for required dependencies
+    if not _check_torch_availability():
         logging.error(
-            "This normalization strategy requires the transformers and torch libraries. "
-            "Install them with: pip install transformers torch"
+            "This normalization strategy requires PyTorch. "
+            "Install it with: pip install torch"
         )
-        raise ImportError("Missing required dependencies: transformers, torch")
+        raise ImportError("Missing required dependency: torch")
+    
+    if not _check_transformers_availability():
+        logging.error(
+            "This normalization strategy requires the transformers library. "
+            "Install it with: pip install transformers"
+        )
+        raise ImportError("Missing required dependency: transformers")
+    
+    # Get the modules
+    torch = _get_torch()
+    transformers = _get_transformers()
+    
+    # Apply torch inference mode decorator
+    with torch.inference_mode():
+        return _apply_language_model_strategy_impl(
+            text, mapping, language_model, tokenizer, model_name,
+            batch_size, max_length, device, word_level, min_confidence, **kwargs
+        )
 
+def _apply_language_model_strategy_impl(
+    text: str,
+    mapping: Mapping[str, List[str]],
+    language_model,
+    tokenizer,
+    model_name: str,
+    batch_size: int,
+    max_length: int,
+    device: Optional[str],
+    word_level: bool,
+    min_confidence: float,
+    **kwargs,
+) -> str:
+    """Implementation of language model strategy."""
+    torch = _get_torch()
+    transformers = _get_transformers()
+    
     if not text:
         logging.warning("Empty text provided for normalization")
         return ""
@@ -100,6 +179,9 @@ def apply_language_model_strategy(
         logging.warning("Empty mapping provided for normalization")
         return text
 
+    # Import transformers classes
+    from transformers import AutoModelForMaskedLM, AutoTokenizer
+    
     # Set default device if not specified
     if device is None:
         device = "cuda" if torch.cuda.is_available() else "cpu"

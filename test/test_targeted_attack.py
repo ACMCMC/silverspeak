@@ -128,30 +128,29 @@ def test_targeted_attack_with_zero_percentage():
     assert differences <= 1
 
 
-def test_targeted_attack_with_varying_context():
-    """Test targeted attack with different context window sizes."""
+def test_targeted_attack_consistency():
+    """Test targeted attack produces consistent results with the same seed."""
     text = "Hello World"
     random_seed = 42
     
-    # Test with small context window
-    result_small = targeted_attack(
+    # Run the attack twice with the same seed
+    result_1 = targeted_attack(
         text, 
         percentage=0.3,
-        context_window_size=5,
         random_seed=random_seed
     )
     
-    # Test with large context window
-    result_large = targeted_attack(
+    result_2 = targeted_attack(
         text,
         percentage=0.3,
-        context_window_size=15,
         random_seed=random_seed
     )
     
-    # Check that the text has been modified in both cases
-    assert result_small != text
-    assert result_large != text
+    # Check that the text has been modified
+    assert result_1 != text
+    
+    # Check that results are consistent with the same seed
+    assert result_1 == result_2
 
 
 def test_targeted_attack_with_extreme_percentage():
@@ -176,27 +175,24 @@ def test_targeted_attack_with_extreme_percentage():
     assert differences > 0
 
 
-def test_targeted_attack_with_context_window():
-    """Test targeted attack with different context window sizes."""
-    text = "This is a sample text for testing context window sizes."
+def test_targeted_attack_different_percentages():
+    """Test targeted attack with different replacement percentages."""
+    text = "This is a sample text for testing different percentages."
     
     # Set a fixed random seed for consistency
     random_seed = 42
-    percentage = 0.3
     
-    # Try with small context window
+    # Try with small percentage
     result_small = targeted_attack(
         text, 
-        percentage=percentage, 
-        context_window_size=4,
+        percentage=0.1,
         random_seed=random_seed
     )
     
-    # Try with large context window
+    # Try with large percentage
     result_large = targeted_attack(
         text, 
-        percentage=percentage,
-        context_window_size=20,
+        percentage=0.5,
         random_seed=random_seed
     )
     
@@ -204,8 +200,10 @@ def test_targeted_attack_with_context_window():
     assert result_small != text
     assert result_large != text
     
-    # Results should potentially be different due to different context sizes
-    # affecting the homoglyph selection, but with same random seed and percentage
-    # the characters selected for replacement should be the same
-    # Note: They might still be the same if context doesn't affect selection
-    # for the specific characters in this text
+    # Count the number of character differences
+    diff_small = sum(1 for a, b in zip(text, result_small) if a != b)
+    diff_large = sum(1 for a, b in zip(text, result_large) if a != b)
+    
+    # Larger percentage should result in more character replacements
+    # Note: This assumes there are enough replaceable characters in the text
+    assert diff_large > diff_small

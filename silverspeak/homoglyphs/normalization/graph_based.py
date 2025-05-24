@@ -17,17 +17,31 @@ from collections import defaultdict
 
 logger = logging.getLogger(__name__)
 
-# Try to import NetworkX for graph algorithms
-try:
-    import networkx as nx
-    NETWORKX_AVAILABLE = True
-except ImportError:
-    NETWORKX_AVAILABLE = False
-    nx = None  # Define nx as None if import fails
-    logger.warning(
-        "NetworkX not available, graph-based strategy will use a simplified implementation. "
-        "Install with: pip install networkx"
-    )
+# Global flags for lazy loading
+_NETWORKX_AVAILABLE = None
+_networkx = None
+
+def _check_networkx_availability():
+    """Lazy check for NetworkX availability."""
+    global _NETWORKX_AVAILABLE, _networkx
+    if _NETWORKX_AVAILABLE is None:
+        try:
+            import networkx as nx
+            _networkx = nx
+            _NETWORKX_AVAILABLE = True
+        except ImportError:
+            _networkx = None
+            _NETWORKX_AVAILABLE = False
+            logger.warning(
+                "NetworkX not available, graph-based strategy will use a simplified implementation. "
+                "Install with: pip install networkx"
+            )
+    return _NETWORKX_AVAILABLE
+
+def _get_networkx():
+    """Get NetworkX module, loading it lazily if needed."""
+    _check_networkx_availability()
+    return _networkx
 
 
 class CharacterGraph:
@@ -35,7 +49,8 @@ class CharacterGraph:
     
     def __init__(self):
         """Initialize an empty character similarity graph."""
-        if NETWORKX_AVAILABLE:
+        if _check_networkx_availability():
+            nx = _get_networkx()
             self.graph = nx.Graph()
             self.use_networkx = True
         else:
@@ -92,6 +107,7 @@ class CharacterGraph:
             return [start]
             
         if self.use_networkx:
+            nx = _get_networkx()
             if start not in self.graph or end not in self.graph:
                 return None
                 
@@ -160,6 +176,7 @@ class CharacterGraph:
             return chars[0]
             
         if self.use_networkx:
+            nx = _get_networkx()
             # Use NetworkX's built-in centrality measures
             try:
                 # Filter to characters that exist in the graph
@@ -317,7 +334,7 @@ class GraphNormalizer:
     
     def _find_closest_with_networkx(self, char: str) -> Optional[str]:
         """Find closest standard character using NetworkX."""
-        import networkx as nx
+        nx = _get_networkx()
         
         # Check if character is in the graph
         if not hasattr(self.graph, 'graph') or char not in self.graph.graph:

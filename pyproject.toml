@@ -17,9 +17,17 @@ keywords = [
 python = ">=3.11,<4.0"
 pandas = "^2.2.2"
 unicodedataplus = "^16.0.0.post1"
+tomli = "^2.0.1"
+
+[tool.poetry.group.advanced]
+optional = true
+
+[tool.poetry.group.advanced.dependencies]
 transformers = "^4.51.3"
 torch = "^2.6.0"
-tomli = "^2.0.1"
+nltk = "^3.8.1"  # For n-gram analysis strategy
+pillow = "^10.0.0"  # For OCR confidence strategy
+python-doctr = "^0.7.0"  # For OCR confidence strategy
 
 [tool.poetry.group.spell-check]
 optional = true

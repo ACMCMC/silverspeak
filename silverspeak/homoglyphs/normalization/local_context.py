@@ -13,7 +13,7 @@ from typing import List, Mapping
 
 import unicodedataplus
 
-from ..unicode_scoring import score_homoglyph_for_context
+from ..unicode_scoring import score_homoglyphs_for_character
 
 logger = logging.getLogger(__name__)
 
@@ -81,7 +81,7 @@ def apply_local_context_strategy(
             for possible_char in possible_chars:
                 try:
                     # Use the score_homoglyph_for_context function from unicode_scoring
-                    score = score_homoglyph_for_context(
+                    score = score_homoglyphs_for_character(
                         homoglyph=possible_char,
                         char=char,
                         context=context_window,

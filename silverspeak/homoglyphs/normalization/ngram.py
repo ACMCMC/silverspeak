@@ -25,19 +25,52 @@ try:
 except Exception as e:
     logger.warning(f"Failed to create data directory: {e}")
 
-# Try to import NLTK for n-gram models
-try:
-    import nltk
-    from nltk.lm import NgramCounter, MLE
-    from nltk.lm.preprocessing import padded_everygram_pipeline
-    from nltk.util import everygrams
-    NLTK_AVAILABLE = True
-except ImportError:
-    NLTK_AVAILABLE = False
-    logger.warning(
-        "NLTK not available, n-gram strategy will use a simplified approach. "
-        "Install with: pip install nltk"
-    )
+# Global flags for lazy loading
+_NLTK_AVAILABLE = None
+_nltk = None
+_nltk_lm = None
+
+def _check_nltk_availability():
+    """Lazy check for NLTK availability."""
+    global _NLTK_AVAILABLE, _nltk, _nltk_lm
+    if _NLTK_AVAILABLE is None:
+        try:
+            import nltk
+            from nltk.lm import NgramCounter, MLE
+            _nltk = nltk
+            _nltk_lm = {'NgramCounter': NgramCounter, 'MLE': MLE}
+            _NLTK_AVAILABLE = True
+        except ImportError:
+            _nltk = None
+            _nltk_lm = None
+            _NLTK_AVAILABLE = False
+            logger.warning(
+                "NLTK not available, n-gram strategy will use a simplified implementation. "
+                "Install with: pip install nltk"
+            )
+    return _NLTK_AVAILABLE
+
+def _get_nltk():
+    """Get NLTK module, loading it lazily if needed."""
+    _check_nltk_availability()
+    return _nltk
+
+def _get_nltk_lm():
+    """Get NLTK language model classes, loading them lazily if needed."""
+    _check_nltk_availability()
+    return _nltk_lm
+
+def _get_nltk_preprocessing():
+    """Get NLTK preprocessing functions, loading them lazily if needed."""
+    if _check_nltk_availability():
+        try:
+            from nltk.lm.preprocessing import padded_everygram_pipeline
+            from nltk.util import everygrams
+            return {'padded_everygram_pipeline': padded_everygram_pipeline, 'everygrams': everygrams}
+        except ImportError:
+            logger.warning("NLTK preprocessing functions not available")
+            return None
+    return None
 
 
 class CharNgramAnalyzer:
@@ -54,7 +87,7 @@ class CharNgramAnalyzer:
         self.n_values = n_values or [2, 3, 4]  # Use bigrams, trigrams, and 4-grams by default
         self.language = language
         self.models = {}
-        self.use_nltk = NLTK_AVAILABLE
+        self.use_nltk = _check_nltk_availability()
         self._ensure_nltk_data()
         
         # Initialize n-gram models
@@ -63,6 +96,11 @@ class CharNgramAnalyzer:
     def _ensure_nltk_data(self):
         """Ensure required NLTK data is available."""
         if not self.use_nltk:
+            return
+            
+        nltk = _get_nltk()
+        if not nltk:
+            self.use_nltk = False
             return
             
         try:
@@ -86,11 +124,39 @@ class CharNgramAnalyzer:
             
         logger.info("Initializing NLTK character n-gram models")
         
-        from nltk.corpus import words, brown, gutenberg
+        nltk_lm = _get_nltk_lm()
+        nltk_preprocessing = _get_nltk_preprocessing()
         
-        # Combine various corpora for a richer language model
+        if not nltk_lm or not nltk_preprocessing:
+            logger.warning("NLTK language modeling components not available, falling back to simple models")
+            self._initialize_simple_models()
+            return
+            
+        MLE = nltk_lm['MLE']
+        padded_everygram_pipeline = nltk_preprocessing['padded_everygram_pipeline']
+        
+        # Get training data
         if self.language.lower() == "english":
-            # Use a combination of words corpus and text corpora
+            try:
+                from nltk.corpus import words, brown, gutenberg
+                
+                # Use a combination of words corpus and text corpora
+                word_texts = [" ".join(words.words())]
+                brown_texts = [" ".join(brown.words(fileid)) for fileid in brown.fileids()[:10]]  # Limit to 10 files
+                gutenberg_texts = [" ".join(gutenberg.words(fileid)) for fileid in gutenberg.fileids()[:5]]  # Limit to 5 files
+                
+                all_texts = word_texts + brown_texts + gutenberg_texts
+                training_text = " ".join(all_texts)
+            except ImportError:
+                logger.warning("NLTK corpora not available, using default text")
+                training_text = (
+                    "The quick brown fox jumps over the lazy dog. "
+                    "A large fawn jumped quickly over white zinc boxes. "
+                    "All questions asked by five watched experts amaze the judge. "
+                    "The five boxing wizards jump quickly. "
+                    "How vexingly quick daft zebras jump! "
+                    "Sphinx of black quartz, judge my vow."
+                )
             word_texts = [" ".join(words.words())]
             brown_texts = [" ".join(brown.words(fileid)) for fileid in brown.fileids()[:10]]  # Limit to 10 files
             gutenberg_texts = [" ".join(gutenberg.words(fileid)) for fileid in gutenberg.fileids()[:5]]  # Limit to 5 files
