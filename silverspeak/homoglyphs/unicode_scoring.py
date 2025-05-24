@@ -9,7 +9,7 @@ Author: Aldan Creo (ACMC) <os@acmc.fyi>
 
 import logging
 import unicodedata
-from typing import Dict, Mapping, Union
+from typing import Dict, Mapping, Union, Optional
 
 import unicodedataplus
 
@@ -84,3 +84,77 @@ def score_homoglyphs_for_character(
         return 0.0
 
     return score
+
+
+def score_homoglyphs_for_context_window(
+    homoglyph: str,
+    char: str,
+    context: str,
+    context_window_size: int = 10,
+    PROPERTIES: Mapping[str, Dict[str, Union[callable, int]]] = {
+        "script": {"fn": unicodedataplus.script, "weight": 3},
+        "block": {"fn": unicodedataplus.block, "weight": 5},
+        "category": {"fn": unicodedata.category, "weight": 10},
+        "bidirectional": {"fn": unicodedata.bidirectional, "weight": 2},
+        "east_asian_width": {"fn": unicodedata.east_asian_width, "weight": 1},
+    },
+) -> Dict[str, float]:
+    """
+    Score a homoglyph based on how well it matches the properties of the characters in a given context window.
+
+    Args:
+        homoglyph (str): The homoglyph to evaluate.
+        char (str): The original character that would be replaced.
+        context (str): The context window containing surrounding characters.
+        context_window_size (int, optional): The size of the context window. Defaults to 10.
+        PROPERTIES (Mapping): Dictionary of Unicode properties and their weights.
+
+    Returns:
+        Dict[str, float]: A dictionary with individual property scores and total score.
+            Keys include each property name plus 'total_score' for the aggregated score.
+    """
+    # Initialize property scores dictionary
+    property_scores = {prop: 0.0 for prop in PROPERTIES.keys()}
+    context_chars_analyzed = 0
+
+    try:
+        # Extract properties of the homoglyph
+        homoglyph_props = {prop: PROPERTIES[prop]["fn"](homoglyph) for prop in PROPERTIES}
+
+        # Analyze each character in the context window (excluding the target character position)
+        for ctx_char in context:
+            if ctx_char == char:  # Skip the original character we're replacing
+                continue
+
+            try:
+                # Extract properties of the context character
+                ctx_props = {prop: PROPERTIES[prop]["fn"](ctx_char) for prop in PROPERTIES}
+                context_chars_analyzed += 1
+
+                # Score based on how well homoglyph properties match context character properties
+                for prop, weight_info in PROPERTIES.items():
+                    try:
+                        if homoglyph_props[prop] == ctx_props[prop]:
+                            # Weight context matches lower than direct character matches
+                            property_scores[prop] += weight_info["weight"]
+                    except Exception:
+                        continue
+
+            except Exception as e:
+                logger.debug(f"Error analyzing context character '{ctx_char}': {e}")
+                continue
+
+        # Normalize scores by number of analyzed characters
+        if context_chars_analyzed > 0:
+            for prop in property_scores:
+                property_scores[prop] = property_scores[prop] / context_chars_analyzed
+
+        # Calculate total score
+        total_score = sum(property_scores.values())
+        property_scores["total_score"] = total_score
+
+    except Exception as e:
+        logger.error(f"Error scoring homoglyph '{homoglyph}' in context '{context}': {e}")
+        return {prop: 0.0 for prop in PROPERTIES.keys()} | {"total_score": 0.0}
+    
+    return property_scores

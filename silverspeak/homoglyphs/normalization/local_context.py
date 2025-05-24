@@ -13,7 +13,7 @@ from typing import List, Mapping
 
 import unicodedataplus
 
-from ..unicode_scoring import score_homoglyphs_for_character
+from ..unicode_scoring import score_homoglyphs_for_context_window
 
 logger = logging.getLogger(__name__)
 
@@ -55,7 +55,7 @@ def apply_local_context_strategy(
 
     # We'll use the scoring functionality from unicode_scoring module
     # No need for property extraction functions here
-    
+
     # Process text character by character, analyzing context windows
     replaced_text = ""
     for i, char in enumerate(text):
@@ -75,22 +75,34 @@ def apply_local_context_strategy(
                     context_window = text[: min(N, len(text))]
                 elif end == len(text):
                     context_window = text[-min(N, len(text)) :]
-            
+
             # Score each possible replacement based on how well it matches the context window
             scores = []
+            detailed_scores = []  # Keep track of detailed scores for debugging
             for possible_char in possible_chars:
                 try:
-                    # Use the score_homoglyph_for_context function from unicode_scoring
-                    score = score_homoglyphs_for_character(
+                    # Use the score_homoglyphs_for_context_window function from unicode_scoring
+                    score_dict = score_homoglyphs_for_context_window(
                         homoglyph=possible_char,
                         char=char,
                         context=context_window,
                         context_window_size=N,
+                        PROPERTIES={
+                            "script": {"fn": unicodedataplus.script, "weight": 3},
+                            "block": {"fn": unicodedataplus.block, "weight": 5},
+                            "category": {"fn": unicodedata.category, "weight": 10},
+                            "bidirectional": {"fn": unicodedata.bidirectional, "weight": 2},
+                            "east_asian_width": {"fn": unicodedata.east_asian_width, "weight": 1},
+                        },
                     )
+                    # Extract the total score for comparison
+                    score = score_dict.get("total_score", 0.0)
                     scores.append((possible_char, score))
+                    detailed_scores.append((possible_char, score_dict))
                 except Exception as e:
                     logging.error(f"Error calculating score for '{possible_char}': {e}")
                     scores.append((possible_char, 0))  # Assign lowest score on error
+                    detailed_scores.append((possible_char, {"total_score": 0.0, "error": str(e)}))
 
             if not scores:
                 replaced_text += char
@@ -99,14 +111,28 @@ def apply_local_context_strategy(
             # Select the best-scoring replacement
             best_char, best_score = max(scores, key=lambda x: x[1])
 
+            # Log detailed scoring information for debugging
+            # Find the detailed score for the best character
+            best_detailed_score = next(
+                (score_dict for char_name, score_dict in detailed_scores if char_name == best_char), {}
+            )
+            logging.debug(
+                f"Character '{char}' at index {i}: chosen '{best_char}' with total score {best_score}. "
+                f"Detailed scores: {best_detailed_score}. Context: '{context_window}'"
+            )
+
             # Log a warning if multiple characters tie for the best score
             ties = [s[0] for s in scores if s[1] == best_score]
             if len(ties) > 1 and len(set(ties)) > 1:  # More than one unique character with best score
-                if logging.getLogger().isEnabledFor(logging.DEBUG):
-                    logging.debug(
-                        f"Found a tie for the best character for '{char}' at index {i}. "
-                        f"Options: {ties}. Using '{best_char}'."
-                    )
+                # Get detailed scores for all tied characters
+                tied_detailed_scores = [
+                    (char_name, score_dict) for char_name, score_dict in detailed_scores if char_name in ties
+                ]
+                logging.debug(
+                    f"Found a tie for the best character for '{char}' at index {i}. "
+                    f"Options: {ties}. Using '{best_char}'. "
+                    f"Tied detailed scores: {tied_detailed_scores}"
+                )
 
             replaced_text += best_char
         else:
