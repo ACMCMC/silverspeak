@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 def apply_tokenizer_strategy(
     text: str,
     mapping: Mapping[str, List[str]],
-    tokenizer_name: str = "bigscience/bloom",
+    tokenizer_name: str = "google/gemma-3-1b-pt",
     **kwargs,
 ) -> str:
     """
@@ -84,14 +84,20 @@ def apply_tokenizer_strategy(
     vocab = list(tokenizer.get_vocab().keys())
     vocab = sorted(vocab, key=len, reverse=True)
 
-    # Remove special prefix (varies by tokenizer type)
-    if any(token.startswith("▁") for token in vocab):
-        # BLOOM, GPT-2, and other BPE-based tokenizers use ▁
-        vocab = [token[1:] if token.startswith("▁") else token for token in vocab]
-    elif any(token.startswith("##") for token in vocab):
-        # BERT-style tokenizers use ##
-        vocab = [token[2:] if token.startswith("##") else token for token in vocab]
+    # Remove space special prefixes (varies by tokenizer type)
+    # First get what's the special prefix for this tokenizer
+    # Tokenize 'Hello' and ' Hello' to see if they differ
+    hello_with_space_prefix = tokenizer(" Hello", add_special_tokens=False)["input_ids"]
+    assert len(hello_with_space_prefix) == 1, "Tokenizer should return a single token for ' Hello'"
+    decoded_token = tokenizer.convert_ids_to_tokens(hello_with_space_prefix[0])
+    # Space prefix is everything before 'Hello'
+    space_prefix = decoded_token[: decoded_token.index("Hello")]
+    # Remove all tokens that start with this space prefix
+    vocab = [
+        token for token in vocab if not token.startswith(space_prefix)
+    ]  # We remove instead of replacing because that greatly reduces the number of tokens we have to process (we will account for having removed the space prefix later by always using the space character if it is a possible homoglyph)
 
+    # Initialize normalized text
     normalized_text = ""
 
     # Process each character with a progress bar
@@ -100,6 +106,12 @@ def apply_tokenizer_strategy(
         if char in mapping:
             # Get possible homoglyphs including original character
             possible_chars = [char] + mapping[char]
+
+            # As we're removing space prefixes, if the space ' ' is a possible character, we choose it automatically - this is a common case but could perhaps be made configurable
+            if " " in possible_chars:
+                logging.debug(f"Character '{char}' at index {i} is a space, using it directly")
+                normalized_text += " "
+                continue
 
             # Find tokens in vocabulary that contain each possible character
             possible_token_starts = {}
@@ -133,8 +145,7 @@ def apply_tokenizer_strategy(
 
             if not possible_token_starts:
                 # No valid matches found, keep original character
-                if logging.getLogger().isEnabledFor(logging.DEBUG):
-                    logging.debug(f"No valid token matches for '{char}' at index {i}, keeping original")
+                logging.debug(f"No valid token matches for '{char}' at index {i}, keeping original")
                 normalized_text += char
                 continue
 
