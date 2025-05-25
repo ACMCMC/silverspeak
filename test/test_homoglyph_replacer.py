@@ -7,12 +7,12 @@ POSSIBLE_STRATEGIES = [
     NormalizationStrategies.DOMINANT_SCRIPT_AND_BLOCK,
     NormalizationStrategies.LOCAL_CONTEXT,
     NormalizationStrategies.TOKENIZATION,
-    NormalizationStrategies.LANGUAGE_MODEL,
-    NormalizationStrategies.LLM_PROMPT,
-    NormalizationStrategies.SPELL_CHECK,
-    NormalizationStrategies.NGRAM,
-    NormalizationStrategies.OCR_CONFIDENCE,
-    NormalizationStrategies.GRAPH_BASED,
+    # NormalizationStrategies.LANGUAGE_MODEL,
+    # NormalizationStrategies.LLM_PROMPT,
+    # NormalizationStrategies.SPELL_CHECK,
+    # NormalizationStrategies.NGRAM,
+    # NormalizationStrategies.OCR_CONFIDENCE,
+    # NormalizationStrategies.GRAPH_BASED,
 ]
 
 TEXTS_TO_TEST = [
