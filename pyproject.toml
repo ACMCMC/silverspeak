@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "silverspeak"
-version = "2.3.0"
+version = "3.0.0"
 description = "A Python library to perform homoglyph-based attacks on text. It supports both identical and non-identical homoglyphs across multiple languages."
 readme = "README.md"
 license = "GPL-3.0"
