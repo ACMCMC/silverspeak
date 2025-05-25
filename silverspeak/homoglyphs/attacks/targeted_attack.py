@@ -172,8 +172,34 @@ def targeted_attack(
         logger.info("No characters will be replaced (percentage too low or no eligible characters)")
         return text
 
-    # Select top scoring replacements to apply
-    replacements_to_apply = replacement_options[:num_to_replace]
+    # Group replacements by score and select randomly within each score group
+    replacements_to_apply = [] # We won't apply all possible replacements, just the best ones
+    score_groups = {}
+    
+    # Group replacement options by score
+    for option in replacement_options:
+        score = option[3]
+        if score not in score_groups:
+            score_groups[score] = []
+        score_groups[score].append(option)
+    
+    # Sort scores in descending order
+    sorted_scores = sorted(score_groups.keys(), reverse=True)
+    
+    # Select replacements, prioritizing higher scores but choosing randomly within each score group
+    remaining_to_select = num_to_replace
+    for score in sorted_scores:
+        if remaining_to_select <= 0:
+            break
+            
+        candidates = score_groups[score]
+        # Randomly shuffle candidates within this score group
+        random_state.shuffle(candidates)
+        
+        # Take as many as we need (or all available if fewer than needed)
+        to_take = min(remaining_to_select, len(candidates))
+        replacements_to_apply.extend(candidates[:to_take])
+        remaining_to_select -= to_take
 
     # Apply replacements (starting from the end to avoid index shifting problems)
     replacements_to_apply.sort(key=lambda x: x[0], reverse=True)
