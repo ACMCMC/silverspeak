@@ -88,9 +88,10 @@ def apply_local_context_strategy(
                         context=context_window,
                         context_window_size=N,
                         PROPERTIES={
-                            "script": {"fn": unicodedataplus.script, "weight": 3},
+                            "script": {"fn": unicodedataplus.script, "weight": 2},
                             "block": {"fn": unicodedataplus.block, "weight": 5},
-                            "category": {"fn": unicodedata.category, "weight": 10},
+                            "plane": {"fn": lambda c: ord(c) >> 16, "weight": 3},
+                            "category": {"fn": unicodedata.category, "weight": 2},
                             "bidirectional": {"fn": unicodedata.bidirectional, "weight": 2},
                             "east_asian_width": {"fn": unicodedata.east_asian_width, "weight": 1},
                         },
