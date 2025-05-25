@@ -23,7 +23,7 @@ jobs:
       - name: Install dependencies
         run: |
           curl -sSL https://install.python-poetry.org | python3 -
-          poetry install
+          poetry install --with advanced
 
       - name: Run fallback test
         run: |
