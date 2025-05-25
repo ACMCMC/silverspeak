@@ -27,13 +27,17 @@ The `normalization` package provides a suite of methods to normalize text by lev
 
 3. **Local Context Strategy**:
 
-   This strategy uses a sliding window approach to normalize text based on local context. For each character, it evaluates possible replacements by comparing their properties (e.g., script, block, category) with those of surrounding characters in the window. The replacement that best matches the context is selected. If multiple replacements have the same score, a warning is logged, and the first one is chosen.
+   This strategy uses an advanced sliding window approach to normalize text based on sophisticated local context analysis. For each character, it evaluates possible replacements by analyzing their Unicode properties (script, block, plane, category, bidirectional, east_asian_width) and comparing them with the properties of surrounding characters in the context window. The strategy uses a weighted scoring system where Unicode block has the highest importance, followed by plane and script. This ensures that replacement characters not only look similar but also have compatible Unicode properties that maintain visual and semantic coherence with their context.
 
    .. code-block:: python
 
       from silverspeak.homoglyphs.normalization import apply_local_context_strategy
 
-      normalized_text = apply_local_context_strategy(text="example text", normalization_map={})
+      normalized_text = apply_local_context_strategy(
+          text="example text", 
+          normalization_map={},
+          N=10  # Context window size
+      )
       print(normalized_text)
 
 4. **Tokenizer Strategy**:

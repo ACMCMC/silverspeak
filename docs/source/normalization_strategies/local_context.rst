@@ -12,7 +12,7 @@ Implementation Details
 -----------------------
 
 1. **Sliding Window Context**:
-   The following code snippet demonstrates how to use a sliding window to capture the local context around each character. The window dynamically adjusts at the boundaries of the text to ensure a consistent size.
+   The strategy uses a sliding window to capture the local context around each character. The window dynamically adjusts at the boundaries of the text to ensure sufficient context.
 
    .. code-block:: python
 
@@ -20,72 +20,130 @@ Implementation Details
       end = min(len(text), i + N // 2 + 1)
       context_window = text[start:end]
 
-   Here, the `start` and `end` indices define the boundaries of the sliding window. The window size is determined by the parameter `N`, which specifies the number of characters to include in the context. This step ensures that the context window is always centered around the target character, even at the edges of the text.
+      # Ensure we have a sufficiently sized window
+      if len(context_window) < min(N, len(text)):
+          if start == 0:
+              context_window = text[: min(N, len(text))]
+          elif end == len(text):
+              context_window = text[-min(N, len(text)) :]
 
-2. **Property Extraction**:
-   This snippet extracts various properties (e.g., script, block, category) of the characters in the context window. These properties are used to evaluate possible replacements for the target character.
+   The `start` and `end` indices define the boundaries of the sliding window. The window size is determined by the parameter `N` (default 10), which specifies the number of characters to include in the context. The strategy ensures that the context window is always optimally sized, even at the edges of the text.
 
-   .. code-block:: python
-
-      PROPERTY_FNS = {
-          "script": unicodedataplus.script,
-          "block": unicodedataplus.block,
-          "category": unicodedataplus.category,
-          "bidirectional": unicodedata.bidirectional,
-          ...
-      }
-      properties = {
-          prop: [PROPERTY_FNS[prop](c) for c in context_window]
-          for prop in PROPERTY_FNS
-      }
-
-   The `PROPERTY_FNS` dictionary maps property names to their corresponding functions. These functions are applied to each character in the context window to extract the relevant properties. The resulting `properties` dictionary contains a list of values for each property, which are used to evaluate the target character.
-
-3. **Scoring and Selection**:
-   The following code snippet demonstrates how to score each possible replacement based on how well its properties match those of the characters in the context window. The replacement with the highest score is selected.
+2. **Advanced Unicode Property Scoring**:
+   The strategy uses the `score_homoglyphs_for_context_window` function from the unicode_scoring module to evaluate each possible replacement. This function analyzes multiple Unicode properties with different weights:
 
    .. code-block:: python
 
-      scores = []
-      for possible_char in possible_chars:
-          score = sum(
-              PROPERTY_FNS[prop](possible_char) == value
-              for prop, values in properties.items()
-              for value in values
-          )
-          scores.append((possible_char, score))
+      PROPERTIES = {
+          "script": {"fn": unicodedataplus.script, "weight": 2},
+          "block": {"fn": unicodedataplus.block, "weight": 5},
+          "plane": {"fn": lambda c: ord(c) >> 16, "weight": 3},
+          "category": {"fn": unicodedata.category, "weight": 2},
+          "bidirectional": {"fn": unicodedata.bidirectional, "weight": 2},
+          "east_asian_width": {"fn": unicodedata.east_asian_width, "weight": 1},
+      }
+
+   Each property is assigned a weight based on its importance for visual similarity and contextual consistency. The Unicode block has the highest weight (5) as it's most indicative of visual similarity, while east_asian_width has the lowest weight (1).
+
+3. **Context-Aware Scoring**:
+   For each possible replacement character, the strategy calculates how well its Unicode properties match those of the surrounding characters in the context window:
+
+   .. code-block:: python
+
+      score_dict = score_homoglyphs_for_context_window(
+          homoglyph=possible_char,
+          char=char,
+          context=context_window,
+          context_window_size=N,
+          PROPERTIES=PROPERTIES
+      )
+      score = score_dict.get("total_score", 0.0)
+
+   The scoring function returns a detailed breakdown of scores for each property as well as a total aggregated score. Characters that better match the Unicode properties of their surrounding context receive higher scores.
+
+4. **Selection and Tie Handling**:
+   The replacement with the highest total score is selected. The strategy includes sophisticated tie handling and detailed logging:
+
+   .. code-block:: python
+
       best_char, best_score = max(scores, key=lambda x: x[1])
+      
+      # Log detailed scoring information for debugging
+      logging.debug(
+          f"Character '{char}' at index {i}: chosen '{best_char}' with total score {best_score}. "
+          f"Detailed scores: {best_detailed_score}. Context: '{context_window}'"
+      )
 
-   Here, the `scores` list stores the score for each possible replacement. The score is calculated by comparing the properties of the replacement character with those of the characters in the context window. The replacement with the highest score is selected as the best match.
+      # Handle ties between multiple characters
+      ties = [s[0] for s in scores if s[1] == best_score]
+      if len(ties) > 1 and len(set(ties)) > 1:
+          logging.debug(f"Found a tie for the best character for '{char}' at index {i}. Options: {ties}")
 
-4. **Tie Handling**:
-   This snippet handles cases where multiple replacements have the same score. A warning is logged, and the first replacement is chosen.
-
-   .. code-block:: python
-
-      if len([s for s in scores if s[1] == best_score]) > 1:
-          logging.warning(
-              f"Tie detected for character '{char}' in context '{context_window}'."
-          )
-
-   In the event of a tie, the `logging.warning` function is used to log a message indicating that multiple replacements have the same score. The first replacement in the list is selected as the best match.
+   The strategy provides extensive logging for debugging purposes, including detailed score breakdowns and information about ties between multiple replacement options.
 
 Example Usage
 -------------
 
-The following example demonstrates how to normalize a text using the Local Context Strategy. It applies the strategy to replace homoglyphs while maintaining contextual consistency.
+The following example demonstrates how to normalize text using the Local Context Strategy. It leverages the advanced scoring system to maintain contextual consistency:
 
 .. code-block:: python
 
-   text = "Example text with homoglyphs."
-   normalization_map = {"a": ["α", "а"], "e": ["е", "ε"]}
-   normalized_text = apply_local_context_strategy(text, normalization_map, N=10)
-   print(normalized_text)
+   from silverspeak.homoglyphs.normalization import apply_local_context_strategy
 
-   In this example, the `apply_local_context_strategy` function is used to normalize the input text. The function leverages the sliding window mechanism to evaluate the local context of each character and select the most contextually appropriate replacement.
+   text = "Exаmple tеxt with һomoglуphs."  # Contains Cyrillic homoglyphs
+   normalization_map = {
+       "а": ["a"],  # Cyrillic 'а' to Latin 'a'
+       "е": ["e"],  # Cyrillic 'е' to Latin 'e'
+       "һ": ["h"],  # Cyrillic 'һ' to Latin 'h'
+       "у": ["y"],  # Cyrillic 'у' to Latin 'y'
+   }
+   
+   normalized_text = apply_local_context_strategy(
+       text, 
+       normalization_map, 
+       N=10  # Context window size
+   )
+   print(normalized_text)  # Output: "Example text with homoglyphs."
+
+This example shows how the strategy analyzes the Unicode properties of surrounding characters to make contextually appropriate replacements. The function uses sophisticated scoring to ensure that replacements maintain visual and semantic coherence with the surrounding text.
+
+**Alternative Usage via normalize_text**:
+
+.. code-block:: python
+
+   from silverspeak.homoglyphs import normalize_text
+   from silverspeak.homoglyphs.utils import NormalizationStrategies
+
+   text = "Exаmple tеxt with һomoglуphs."
+   normalized_text = normalize_text(
+       text, 
+       strategy=NormalizationStrategies.LOCAL_CONTEXT,
+       N=10  # Optional: specify context window size
+   )
+   print(normalized_text)
 
 Key Considerations
 -------------------
-- The sliding window size `N` significantly impacts the performance and accuracy of this strategy. A larger window provides more context but increases computational complexity.
-- This strategy is particularly effective for mixed-script texts or texts with frequent homoglyphs.
-- The choice of properties and their corresponding functions in `PROPERTY_FNS` can be customized to suit specific applications.
+
+**Performance and Complexity:**
+
+- The sliding window size `N` significantly impacts both performance and accuracy. A larger window provides more context but increases computational complexity.
+- The sophisticated scoring system makes this strategy more computationally intensive than simple mapping strategies, but produces higher quality results.
+
+**Effectiveness:**
+
+- This strategy is particularly effective for mixed-script texts where maintaining visual consistency is crucial.
+- The weighted Unicode property system ensures that visually similar characters (same block, script) are preferred over less similar ones.
+- The context-aware approach helps maintain the overall "feel" and readability of the text.
+
+**Customization:**
+
+- The Unicode properties and their weights can be customized by modifying the `PROPERTIES` parameter in the scoring function.
+- The context window size can be adjusted based on the specific requirements of your application.
+- Debug logging can be enabled to understand the scoring decisions and identify potential issues.
+
+**Debugging and Monitoring:**
+
+- The strategy provides detailed logging at the DEBUG level, showing score breakdowns for each character replacement decision.
+- Tie situations are automatically detected and logged, helping identify ambiguous cases.
+- Error handling ensures that scoring failures don't break the normalization process.
