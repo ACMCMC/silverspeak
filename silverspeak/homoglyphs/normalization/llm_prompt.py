@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 def apply_llm_prompt_strategy(
     text: str,
     mapping: Mapping[str, List[str]],
-    model_name: str = "google/gemma-2-1b-it",
+    model_name: str = "google/gemma-3-1b-it",
     device: Optional[str] = None,
     max_length: int = 512,
     temperature: float = 0.0,
@@ -37,7 +37,7 @@ def apply_llm_prompt_strategy(
         mapping (Mapping[str, List[str]]): A mapping from original characters to
             their possible homoglyph replacements.
         model_name (str): The HuggingFace model name to load.
-            Defaults to "google/gemma-2-1b-it".
+            Defaults to "google/gemma-3-1b-it".
         device (Optional[str]): Device to run the model on ('cuda', 'cpu', etc.).
             Defaults to cuda if available, otherwise cpu.
         max_length (int): Maximum length of text segments to process. Longer text will be split.
@@ -118,11 +118,11 @@ Homoglyphs are characters that look similar but have different Unicode code poin
 For example: {homoglyph_info}
 
 Your task is to read the provided text which may contain homoglyphs (visually similar characters from different scripts)
-and produce a normalized version with standard Latin characters.
+and produce a normalized version with the correct characters.
 
 Important instructions:
 1. Identify any homoglyphs or suspicious characters that might be replacements
-2. Replace them with their standard Latin equivalents
+2. Replace them with their correct characters (which are often in the same alphabet/script as the surrounding text)
 3. Preserve the exact wording, spacing, and punctuation of the original text
 4. If you're uncertain about a character, keep it as is
 5. Return ONLY the normalized text without any explanations or additional comments

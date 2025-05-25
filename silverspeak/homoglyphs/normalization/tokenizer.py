@@ -16,7 +16,7 @@ logger = logging.getLogger(__name__)
 def apply_tokenizer_strategy(
     text: str,
     mapping: Mapping[str, List[str]],
-    tokenizer_name: str = "google/gemma-3-1b-pt",
+    tokenizer_name: str = "google/gemma-3-1b-it",
     **kwargs,
 ) -> str:
     """

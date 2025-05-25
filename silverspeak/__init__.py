@@ -37,6 +37,7 @@ except (ImportError, ModuleNotFoundError):
         __version__ = "unknown"
 
 from silverspeak.homoglyphs.attacks.greedy_attack import greedy_attack
+from silverspeak.homoglyphs.attacks.targeted_attack import targeted_attack
 from silverspeak.homoglyphs.homoglyph_replacer import HomoglyphReplacer
 from silverspeak.homoglyphs.normalize import normalize_text
 from silverspeak.homoglyphs.attacks.random_attack import random_attack
@@ -56,6 +57,7 @@ def get_version() -> str:
 __all__ = [
     "random_attack",
     "greedy_attack",
+    "targeted_attack",
     "normalize_text",
     "HomoglyphReplacer",
     "TypesOfHomoglyphs",

@@ -140,15 +140,14 @@ def targeted_attack(
                 score = score_homoglyphs_for_character(
                     homoglyph=homoglyph,
                     char=char,
-                    PROPERTIES=[
-                        {
-                            "script": {"fn": unicodedataplus.script, "weight": 3},
-                            "block": {"fn": unicodedataplus.block, "weight": 5},
-                            "category": {"fn": unicodedata.category, "weight": 10},
-                            "bidirectional": {"fn": unicodedata.bidirectional, "weight": 2},
-                            "east_asian_width": {"fn": unicodedata.east_asian_width, "weight": 1},
-                        }
-                    ],
+                    PROPERTIES={
+                        "script": {"fn": unicodedataplus.script, "weight": 2},
+                        "block": {"fn": unicodedataplus.block, "weight": 5},
+                        "plane": {"fn": lambda c: ord(c) >> 16, "weight": 3},
+                        "category": {"fn": unicodedata.category, "weight": 2},
+                        "bidirectional": {"fn": unicodedata.bidirectional, "weight": 2},
+                        "east_asian_width": {"fn": unicodedata.east_asian_width, "weight": 1},
+                    },
                 )
 
                 possible_replacements.append((homoglyph, score))
