@@ -13,6 +13,9 @@ jobs:
     # This job focuses on testing that at least the critical functionalities of the package work as expected. This will ensure that the most important features are functioning correctly. For example, it checks that at least one of the strategies to normalize homoglyph attacked texts is able to actually get the expected result. 
     runs-on: ubuntu-latest
 
+    env:
+      HF_TOKEN: ${{ secrets.HF_TOKEN }}
+
     steps:
       - uses: actions/checkout@v4
 
