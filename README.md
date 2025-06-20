@@ -4,6 +4,8 @@
 
 [![Linting](https://github.com/ACMCMC/silverspeak/actions/workflows/linting.yml/badge.svg)](https://github.com/ACMCMC/silverspeak/actions/workflows/linting.yml) 👈 This means that the code is well formatted and follows the PEP8 style guide. It also means that the code is type-checked using mypy, and that the code is linted using flake8.
 
+[![Contributors Welcome](https://img.shields.io/badge/contributors-welcome-brightgreen.svg?style=flat)](https://github.com/ACMCMC/silverspeak/blob/main/README.md#contributing) 👈 We're actively looking for contributors! You can help us by implementing new homoglyph attack /normalization strategies, improving documentation, or enhancing existing techniques.
+
 # SilverSpeak
 This is a Python library to perform homoglyph-based attacks on text.
 
