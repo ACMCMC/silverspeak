@@ -1,10 +1,8 @@
-[![Acceptability Test Workflow](https://github.com/ACMCMC/silverspeak/actions/workflows/acceptability-test.yml/badge.svg)](https://github.com/ACMCMC/silverspeak/actions/workflows/acceptability-test.yml) 👈 This means that the library is able to always give correct results with at least one of its strategies on all test cases.
+[![Acceptability Test Workflow](https://github.com/ACMCMC/silverspeak/actions/workflows/acceptability-test.yml/badge.svg)](https://github.com/ACMCMC/silverspeak/actions/workflows/acceptability-test.yml)
 
-[![Full Test Workflow](https://github.com/ACMCMC/silverspeak/actions/workflows/full-test.yml/badge.svg)](https://github.com/ACMCMC/silverspeak/actions/workflows/full-test.yml) 👈 This should fail. It means that not all strategies work perfectly in every single test case, which is to be expected and means you need to choose your strategies wisely. Check [the docs](https://acmcmc.github.io/silverspeak/) for more context.
+[![Linting](https://github.com/ACMCMC/silverspeak/actions/workflows/linting.yml/badge.svg)](https://github.com/ACMCMC/silverspeak/actions/workflows/linting.yml)
 
-[![Linting](https://github.com/ACMCMC/silverspeak/actions/workflows/linting.yml/badge.svg)](https://github.com/ACMCMC/silverspeak/actions/workflows/linting.yml) 👈 This means that the code is well formatted and follows the PEP8 style guide. It also means that the code is type-checked using mypy, and that the code is linted using flake8.
-
-[![Contributors Welcome](https://img.shields.io/badge/contributors-welcome-brightgreen.svg?style=flat)](https://github.com/ACMCMC/silverspeak/blob/main/README.md#contributing) 👈 We're actively looking for contributors! You can help us by implementing new homoglyph attack /normalization strategies, improving documentation, or enhancing existing techniques.
+[![Contributors Welcome](https://img.shields.io/badge/contributors-welcome-brightgreen.svg?style=flat)](https://github.com/ACMCMC/silverspeak/blob/main/README.md#contributing)
 
 # SilverSpeak
 This is a Python library to perform homoglyph-based attacks on text.
@@ -14,44 +12,8 @@ This is a Python library to perform homoglyph-based attacks on text.
 ## Installation
 
 ### Basic Installation
-You can install this package from PyPI by running:
 ```
 pip install silverspeak
-```
-
-### Optional Dependencies
-
-SilverSpeak provides optional dependencies for enhanced normalization strategies:
-
-#### Spell Checking Dependencies
-```
-pip install "silverspeak[spell-check]"
-```
-
-#### Contextual Spell Checking
-```
-pip install "silverspeak[contextual-spell-check]"
-```
-
-#### N-gram Analysis
-```
-pip install "silverspeak[ngram-analysis]"
-```
-
-#### Graph-based Analysis
-```
-pip install "silverspeak[graph-analysis]"
-```
-
-#### OCR-based Analysis
-```
-pip install pytesseract pillow
-```
-
-#### All Optional Dependencies
-```
-pip install "silverspeak[spell-check,contextual-spell-check,ngram-analysis,graph-analysis]"
-pip install pytesseract pillow
 ```
 
 ## Documentation
@@ -63,8 +25,7 @@ For full documentation, visit [https://acmcmc.github.io/silverspeak/](https://ac
 
 Here are some ways you can contribute:
 - Implementing new homoglyph attack strategies
-- Improving existing normalization techniques
-- Enhancing documentation and examples
+- Improving documentation and examples
 - Writing tests to ensure reliability
 - Reporting bugs or suggesting features via GitHub issues
 
@@ -74,10 +35,10 @@ To contribute, please feel free to fork the repository, make your changes, and s
 
 ### Basic Attack Example
 ```python
-from silverspeak.homoglyphs.random_attack import random_attack
+from silverspeak import random_attack
 
 text = "Hello, world!"
-attacked_text = random_attack(text, 0.1)
+attacked_text = random_attack(text=text, percentage=0.1, random_seed=2242)
 print(attacked_text)
 ```
 
@@ -87,33 +48,31 @@ SilverSpeak offers significant advantages over existing homoglyph replacement li
 
 ### Comprehensive Comparison with Popular Homoglyph Libraries
 
-| Feature | SilverSpeak | confusable_homoglyphs | life4/homoglyphs | codebox/homoglyph | decancer | squatm3 | unisec | homoglyphic | glyphcheck |
+| Feature | [SilverSpeak](https://github.com/ACMCMC/silverspeak) | [confusable_homoglyphs](https://github.com/vhf/confusable_homoglyphs) | [life4/homoglyphs](https://github.com/life4/homoglyphs) | [codebox/homoglyph](https://github.com/codebox/homoglyph) | [decancer](https://github.com/null8626/decancer) | [squatm3](https://github.com/david3107/squatm3) | [unisec](https://github.com/Acceis/unisec) | [homoglyphic](https://github.com/AlanRVA/Homoglyphic) | [glyphcheck](https://github.com/NebulousLabs/glyphcheck) |
 |---------|-------------|----------------------|-----------------|-------------------|----------|--------|-------|-------------|------------|
 | **Homoglyph Sources** | Unicode standard + OCR-based confusables | Unicode standard only | Unicode standard only | Unicode standard + partial additions | Unicode standard only | Unicode standard only | Unicode standard only | Unicode standard only | Limited set |
 | **Context-Awareness** | ✅ Local context matching for natural replacements | ❌ No context awareness | ❌ No context awareness | ❌ No context awareness | ❌ No context awareness | ❌ No context awareness | ❌ No context awareness | ❌ No context awareness | ❌ No context awareness |
-| **Normalization Strategies** | Multiple strategies (dominant script, context-based, language model, etc.) | Basic detection only | Basic ASCII conversion | Simple search capabilities | Text cleanup only | Limited detection | Limited detection | Simple detection | Limited detection |
+| **Normalization** | HKB fast pipeline with ambiguity metadata | Basic detection only | Basic ASCII conversion | Simple search capabilities | Text cleanup only | Limited detection | Limited detection | Simple detection | Limited detection |
 | **Attack Reversal** | ✅ Advanced attack normalization | ❌ Detection only | ❌ Limited to ASCII conversion | ❌ No reversal | ✅ Basic cleanup | ❌ Limited | ❌ Limited | ⚠️ Partial | ❌ No |
 | **Targeted Attack Support** | ✅ Sophisticated targeting | ❌ No | ❌ No | ❌ No | ❌ No | ⚠️ Limited | ❌ No | ❌ No | ❌ No |
-| **Active Maintenance** | ✅ Actively maintained | ⚠️ Minimal maintenance | ⚠️ Minimal | ⚠️ Minimal | ⚠️ Minimal | ❌ Abandoned | ⚠️ Minimal | ⚠️ Minimal | ❌ Abandoned |
 | **Python Compatibility** | ✅ Modern Python | ⚠️ Legacy Python support | ✅ Python 2 & 3 | ❌ JavaScript/Java focus | ✅ Deno/JS focus | ✅ Python 3 | ✅ Ruby | ✅ C# | ✅ Go |
-| **Language Model Integration** | ✅ Advanced | ❌ None | ❌ None | ❌ None | ❌ None | ❌ None | ❌ None | ❌ None | ❌ None |
+| **Language Model Integration** | Not required at runtime (HKB graph) | ❌ None | ❌ None | ❌ None | ❌ None | ❌ None | ❌ None | ❌ None | ❌ None |
 | **Performance Optimization** | ✅ Optimized for both attack and defense | ⚠️ Basic detection | ⚠️ Basic conversion | ⚠️ Search-focused | ⚠️ Basic cleanup | ⚠️ Domain focus | ⚠️ Basic security | ⚠️ Basic detection | ⚠️ Basic detection |
 | **Documentation** | ✅ Comprehensive with examples | ⚠️ Basic | ⚠️ Basic | ⚠️ Basic | ⚠️ Basic | ⚠️ Limited | ⚠️ Basic | ⚠️ Basic | ⚠️ Limited |
 | **OCR Character Support** | ✅ Extensive | ❌ No | ❌ No | ❌ No | ❌ No | ❌ No | ❌ No | ❌ No | ❌ No |
-| **Research-Backed** | ✅ Published research | ❌ No | ❌ No | ❌ No | ❌ No | ❌ No | ❌ No | ❌ No | ❌ No |
 
 ### Feature Details of Major Alternatives
 
 | Library | Primary Focus | Strengths | Limitations |
 |---------|--------------|-----------|------------|
-| **confusable_homoglyphs** | Character confusion detection | Simple API, basic detection | No attack reversal, limited to Unicode confusables, minimal maintenance |
-| **life4/homoglyphs** | ASCII conversion | Simple conversion to ASCII | Limited homoglyph set, no context awareness, basic functionality |
-| **codebox/homoglyph** | Search capabilities | Good for basic searches | JavaScript/Java only, no reversal capabilities, limited features |
-| **decancer** | Text cleanup | Removes "cancerous" text formatting | Limited to cleanup, no sophisticated attack capabilities |
-| **squatm3** | Domain squatting detection | Good for cybersecurity use cases | Narrow focus on domains, abandoned, limited features |
-| **unisec** | Unicode security toolkit | General Unicode security | Not focused on homoglyphs specifically, limited features |
-| **homoglyphic** | Simple detection | Easy integration with C# | Basic detection only, no advanced features |
-| **glyphcheck** | Domain name checking | Simple API | Very limited feature set, abandoned |
+| **[confusable_homoglyphs](https://github.com/vhf/confusable_homoglyphs)** | Character confusion detection | Simple API, basic detection | No attack reversal, limited to Unicode confusables |
+| **[life4/homoglyphs](https://github.com/life4/homoglyphs)** | ASCII conversion | Simple conversion to ASCII | Limited homoglyph set, no context awareness, basic functionality |
+| **[codebox/homoglyph](https://github.com/codebox/homoglyph)** | Search capabilities | Good for basic searches | JavaScript/Java only, no reversal capabilities, limited features |
+| **[decancer](https://github.com/null8626/decancer)** | Text cleanup | Removes "cancerous" text formatting | Limited to cleanup, no sophisticated attack capabilities |
+| **[squatm3](https://github.com/david3107/squatm3)** | Domain squatting detection | Good for cybersecurity use cases | Narrow focus on domains, limited features |
+| **[unisec](https://github.com/Acceis/unisec)** | Unicode security toolkit | General Unicode security | Not focused on homoglyphs specifically, limited features |
+| **[homoglyphic](https://github.com/AlanRVA/Homoglyphic)** | Simple detection | Easy integration with C# | Basic detection only, no advanced features |
+| **[glyphcheck](https://github.com/NebulousLabs/glyphcheck)** | Source code homoglyph detection | Simple API | Very limited feature set |
 
 ### Key Advantages of SilverSpeak
 
@@ -121,23 +80,13 @@ SilverSpeak offers significant advantages over existing homoglyph replacement li
 
 2. **OCR-Based Confusables**: Beyond standard Unicode confusables, SilverSpeak includes characters that appear similar in OCR systems, making it substantially more comprehensive than libraries relying solely on Unicode definitions. Our OCR-based approach captures visual similarities that aren't defined in the Unicode standard.
 
-3. **Multiple Normalization Strategies**: Offers various approaches to reverting homoglyph attacks:
-   - Dominant script and block detection
-   - Local context-based normalization
-   - Tokenization-aware normalization
-   - Language model-based normalization
-   - Spell checking normalization
-   - LLM prompt-based normalization
-   
-   Most other libraries either provide no normalization features or offer only basic detection/conversion without sophisticated reversal capabilities.
+3. **HKB normalization**: ranked homoglyph graph for fast, deterministic normalization with an audit trail.
 
 4. **Targeted Attack Capabilities**: Unlike competing libraries that focus solely on detection or simple random replacements, SilverSpeak provides sophisticated targeted attack strategies that can evade specific AI text detectors while maintaining human readability.
 
-5. **Language Model Integration**: Built-in support for utilizing language models to improve normalization quality, a feature unavailable in any other homoglyph library.
+5. **Comprehensive Testing**: benchmark harness with clean-text FPR gate and round-trip recovery metrics.
 
-6. **Comprehensive Testing**: Extensively tested against various attack scenarios, including tests against modern AI-generated text detectors, ensuring reliability in real-world applications.
-
-7. **Active Research**: Developed as part of published academic research ["SilverSpeak: Evading AI-Generated Text Detectors using Homoglyphs"](https://aclanthology.org/2025.genaidetect-1.1/), with ongoing improvements based on new findings. None of the other libraries are backed by peer-reviewed research.
+6. **Active Research**: developed as part of published academic research ["SilverSpeak: Evading AI-Generated Text Detectors using Homoglyphs"](https://aclanthology.org/2025.genaidetect-1.1/).
 
 ### Use Cases Where SilverSpeak Excels
 
@@ -147,13 +96,13 @@ While other libraries focus primarily on detection or simple character substitut
 
 2. **Security Research**: For researchers examining how homoglyph attacks can affect modern NLP systems and security tools, SilverSpeak provides the most comprehensive toolkit available.
 
-3. **Text Normalization**: When you need to normalize text containing homoglyphs back to standard characters, SilverSpeak offers multiple strategies with varying levels of sophistication to handle even the most complex cases.
+3. **Text Normalization**: HKB-based fast pipeline with structured `NormalizeResult` output.
 
 4. **Language Processing Pipeline Protection**: SilverSpeak can be integrated into text processing pipelines to sanitize input text before it reaches sensitive language processing components.
 
 5. **Content Moderation**: Unlike simple libraries that only detect basic homoglyphs, SilverSpeak's context-aware approach helps identify and normalize sophisticated homoglyph-based attempts to bypass content filters.
 
-6. **Academic Research**: The research-backed approach and multiple normalization strategies make SilverSpeak ideal for academic studies in linguistic security and text processing.
+6. **Academic Research**: research-backed homoglyph attack and normalization toolkit.
 
 7. **Cross-Language Text Processing**: With its advanced Unicode property analysis, SilverSpeak handles mixed-script text more effectively than alternatives.
 

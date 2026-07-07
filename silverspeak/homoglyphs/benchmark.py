@@ -1,5 +1,9 @@
 from dataclasses import dataclass
-from typing import Callable, List
+from typing import List, Protocol
+
+
+class TextTransform(Protocol):
+    def __call__(self, *, text: str) -> str: ...
 
 
 @dataclass
@@ -31,7 +35,7 @@ def _char_accuracy(a: str, b: str) -> float:
 
 def measure_clean_fpr(
     samples: List[str],
-    normalize_fn: Callable[[str], str],
+    normalize_fn: TextTransform,
 ) -> tuple:
     changed = 0
     for sample in samples:
@@ -44,8 +48,8 @@ def measure_clean_fpr(
 
 def measure_round_trip(
     original: str,
-    attack_fn: Callable[[str], str],
-    normalize_fn: Callable[[str], str],
+    attack_fn: TextTransform,
+    normalize_fn: TextTransform,
 ) -> RoundTripResult:
     attacked = attack_fn(text=original)
     recovered = normalize_fn(text=attacked)
@@ -61,14 +65,11 @@ def measure_round_trip(
 def run_benchmark(
     clean_samples: List[str],
     round_trip_samples: List[str],
-    attack_fn: Callable[[str], str],
-    normalize_fn: Callable[[str], str],
+    attack_fn: TextTransform,
+    normalize_fn: TextTransform,
 ) -> BenchmarkReport:
     fpr, changed, total = measure_clean_fpr(samples=clean_samples, normalize_fn=normalize_fn)
-    trips = [
-        measure_round_trip(original=s, attack_fn=attack_fn, normalize_fn=normalize_fn)
-        for s in round_trip_samples
-    ]
+    trips = [measure_round_trip(original=s, attack_fn=attack_fn, normalize_fn=normalize_fn) for s in round_trip_samples]
     return BenchmarkReport(
         clean_fpr=fpr,
         clean_changed=changed,

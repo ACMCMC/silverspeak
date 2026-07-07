@@ -8,14 +8,6 @@ updates:
     groups:
       dev-dependencies:
         dependency-type: development
-      optional-ml:
-        patterns:
-          - "torch"
-          - "transformers"
-          - "pillow"
-          - "python-doctr"
-          - "nltk"
-          - "networkx"
 
   - package-ecosystem: github-actions
     directory: "/"

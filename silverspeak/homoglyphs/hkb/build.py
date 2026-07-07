@@ -3,8 +3,6 @@ import json
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
-import unicodedataplus
-
 from silverspeak.homoglyphs.hkb.visual import (
     CANDIDATE_DISCOVERIES_URL,
     CROSS_SCRIPT_URL,
@@ -29,13 +27,10 @@ MAP_FILES = {
 }
 
 
-def _script(char: str) -> str:
-    return unicodedataplus.script(char)
-
-
 def _load_map(path: Path) -> Dict[str, List[str]]:
     with open(path, encoding="utf-8") as f:
-        return json.load(f)
+        data: Dict[str, List[str]] = json.load(f)
+        return data
 
 
 def _add_edge(

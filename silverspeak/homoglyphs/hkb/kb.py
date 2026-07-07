@@ -3,10 +3,9 @@ import json
 from pathlib import Path
 from typing import Dict, List, Optional
 
-import unicodedataplus
+from silverspeak.homoglyphs.script_block_category_utils import char_script
 
 DEFAULT_HKB_PATH = Path(__file__).parent.parent / "hkb_data" / "graph.json.gz"
-DEFAULT_SOURCES = ["identical", "confusables", "ocr_refined"]
 
 
 class HomoglyphKB:
@@ -45,7 +44,7 @@ class HomoglyphKB:
         for item in items:
             if item["score"] < min_score:
                 continue
-            if _script(char=item["dst"]) != script:
+            if char_script(char=item["dst"]) != script:
                 continue
             out.append(item)
         out.sort(key=lambda e: (-e["score"], e["dst"], e["source"]))
@@ -61,7 +60,7 @@ class HomoglyphKB:
         for char in text:
             if len(char) != 1:
                 continue
-            script = _script(char=char)
+            script = char_script(char=char)
             if script not in scripts:
                 scripts[script] = {
                     "chars": 0,
@@ -79,10 +78,6 @@ class HomoglyphKB:
                 src = item["source"]
                 scripts[script]["sources"][src] = scripts[script]["sources"].get(src, 0) + 1
         return scripts
-
-
-def _script(char: str) -> str:
-    return unicodedataplus.script(char)
 
 
 def load_default_kb() -> HomoglyphKB:

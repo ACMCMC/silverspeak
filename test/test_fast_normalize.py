@@ -2,7 +2,7 @@ from pathlib import Path
 
 import pytest
 
-from silverspeak.homoglyphs.pipeline import normalize_fast
+from silverspeak.homoglyphs.fast_normalize import normalize_fast
 
 GRAPH = Path(__file__).resolve().parents[1] / "silverspeak" / "homoglyphs" / "hkb_data" / "graph.json.gz"
 MIN_SCORE = 0.0

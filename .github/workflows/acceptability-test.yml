@@ -10,32 +10,20 @@ permissions:
 
 jobs:
   acceptability-test:
-    # This job focuses on testing that at least the critical functionalities of the package work as expected. This will ensure that the most important features are functioning correctly. For example, it checks that at least one of the strategies to normalize homoglyph attacked texts is able to actually get the expected result. 
     runs-on: ubuntu-latest
-
-    env:
-      HF_TOKEN: ${{ secrets.HF_TOKEN }}
 
     steps:
       - uses: actions/checkout@v4
 
       - uses: actions/setup-python@v5
         with:
-          python-version: "3.x"
+          python-version: "3.11"
 
       - name: Install dependencies
         run: |
           curl -sSL https://install.python-poetry.org | python3 -
-          poetry install --with advanced
+          poetry install
 
-      - name: Run fallback test
+      - name: Run v3 tests
         run: |
-          poetry run pytest -k "test_normalize_with_fallback"
-
-      - name: Run benchmark gating tests
-        run: |
-          poetry run pytest test/test_benchmark.py test/test_fast_normalize.py test/test_hkb.py -q
-
-      - name: Run random attack and normalize test
-        run: |
-          poetry run pytest -k "test_random_attack_and_normalize_with_tolerance_and_fallback"
+          poetry run pytest test/test_benchmark.py test/test_fast_normalize.py test/test_hkb.py test/test_targeted_attack.py -q

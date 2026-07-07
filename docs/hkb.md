@@ -43,7 +43,7 @@ CLI:
 
 ```bash
 echo "hеllо wоrld" | python -m silverspeak normalize
-echo "hеllо wоrld" | python -m silverspeak normalize --pipeline fast --report
+echo "hеllо wоrld" | python -m silverspeak normalize --report
 ```
 
 ## Query the HKB

@@ -1,6 +1,4 @@
-from silverspeak.homoglyphs.hkb.kb import HomoglyphKB
-from silverspeak.homoglyphs.hkb.build import build_hkb, SOURCE_SCORES
+from silverspeak.homoglyphs.hkb.build import build_hkb
+from silverspeak.homoglyphs.hkb.kb import HomoglyphKB, load_default_kb
 
-from silverspeak.homoglyphs.hkb.visual import VISUAL_SOURCE
-
-__all__ = ["HomoglyphKB", "build_hkb", "SOURCE_SCORES", "VISUAL_SOURCE"]
+__all__ = ["HomoglyphKB", "build_hkb", "load_default_kb"]

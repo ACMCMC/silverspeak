@@ -1,16 +1,11 @@
 import unicodedata
+from pathlib import Path
 from typing import Dict, List, Optional
 
-import unicodedataplus
-
-from silverspeak.homoglyphs.hkb.kb import HomoglyphKB
+from silverspeak.homoglyphs.hkb.kb import DEFAULT_HKB_PATH, HomoglyphKB, load_default_kb
 from silverspeak.homoglyphs.normalize_result import AmbiguousSpan, CharChange, NormalizeResult
-from silverspeak.homoglyphs.script_block_category_utils import detect_dominant_script
+from silverspeak.homoglyphs.script_block_category_utils import char_script, detect_dominant_script
 from silverspeak.homoglyphs.strip import strip_format_chars
-
-
-def _script(char: str) -> str:
-    return unicodedataplus.script(char)
 
 
 def _dedupe_by_dst(candidates: List[Dict]) -> List[Dict]:
@@ -55,13 +50,12 @@ def fast_normalize(
         return NormalizeResult(text="", ambiguous=[], chars_changed=[])
 
     dominant_script = detect_dominant_script(text=nfkc)
-
     out_chars: List[str] = []
     ambiguous: List[AmbiguousSpan] = []
     chars_changed: List[CharChange] = []
 
     for pos, char in enumerate(nfkc):
-        if _script(char=char) == dominant_script:
+        if char_script(char=char) == dominant_script:
             out_chars.append(char)
             continue
 
@@ -74,20 +68,31 @@ def fast_normalize(
 
         if picked is not None:
             out_chars.append(picked["dst"])
-            chars_changed.append(
-                CharChange(pos=pos, src=char, dst=picked["dst"], score=picked["score"])
-            )
+            chars_changed.append(CharChange(pos=pos, src=char, dst=picked["dst"], score=picked["score"]))
             continue
 
         ranked = _dedupe_by_dst(candidates=candidates)
         if len(ranked) > 1:
-            ambiguous.append(
-                AmbiguousSpan(pos=pos, char=char, candidates=ranked)
-            )
+            ambiguous.append(AmbiguousSpan(pos=pos, char=char, candidates=ranked))
         out_chars.append(char)
 
     return NormalizeResult(
         text="".join(out_chars),
         ambiguous=ambiguous,
         chars_changed=chars_changed,
+    )
+
+
+def normalize_fast(
+    text: str,
+    graph_path: Path,
+    min_score: float,
+    score_margin: float,
+) -> NormalizeResult:
+    kb = HomoglyphKB(graph_path=graph_path)
+    return fast_normalize(
+        text=text,
+        kb=kb,
+        min_score=min_score,
+        score_margin=score_margin,
     )
