@@ -1,6 +1,6 @@
 [![Acceptability Test Workflow](https://github.com/ACMCMC/silverspeak/actions/workflows/acceptability-test.yml/badge.svg)](https://github.com/ACMCMC/silverspeak/actions/workflows/acceptability-test.yml) 👈 This means that the library is able to always give correct results with at least one of its strategies on all test cases.
 
-[![Full Test Workflow](https://github.com/ACMCMC/silverspeak/actions/workflows/full-test.yml/badge.svg)](https://github.com/ACMCMC/silverspeak/actions/workflows/full-test.yml) 👈 This should fail. It means that not all strategies work perfectly in every single test case, which is to be expected and means you need to choose your strategies wisely. Check [the docs](http://acmcmc.me/silverspeak/) for more context.
+[![Full Test Workflow](https://github.com/ACMCMC/silverspeak/actions/workflows/full-test.yml/badge.svg)](https://github.com/ACMCMC/silverspeak/actions/workflows/full-test.yml) 👈 This should fail. It means that not all strategies work perfectly in every single test case, which is to be expected and means you need to choose your strategies wisely. Check [the docs](https://acmcmc.github.io/silverspeak/) for more context.
 
 [![Linting](https://github.com/ACMCMC/silverspeak/actions/workflows/linting.yml/badge.svg)](https://github.com/ACMCMC/silverspeak/actions/workflows/linting.yml) 👈 This means that the code is well formatted and follows the PEP8 style guide. It also means that the code is type-checked using mypy, and that the code is linted using flake8.
 
@@ -9,7 +9,7 @@
 # SilverSpeak
 This is a Python library to perform homoglyph-based attacks on text.
 
-![SilverSpeak Logo](docs/source/_static/silverspeak_logo_editable.svg)
+![SilverSpeak Logo](docs/assets/silverspeak_logo_editable.svg)
 
 ## Installation
 
@@ -56,7 +56,7 @@ pip install pytesseract pillow
 
 ## Documentation
 
-For full documentation, visit [the docs](http://acmcmc.me/silverspeak/).
+For full documentation, visit [https://acmcmc.github.io/silverspeak/](https://acmcmc.github.io/silverspeak/).
 
 ## Contributing
 **Contributions are very welcome!** SilverSpeak is still a work in progress, and while we're working hard to finish it, we'd greatly appreciate any help from the community.

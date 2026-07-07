@@ -21,16 +21,20 @@ License: See LICENSE file in the project root
 """
 
 import argparse
+import json
 import logging
 import random
 import sys
 from pathlib import Path
-from typing import List, Optional, TextIO, Union
+from typing import List
 
 from silverspeak import __version__
 from silverspeak.homoglyphs.attacks.greedy_attack import greedy_attack
+from silverspeak.homoglyphs.attacks.targeted_attack import targeted_attack
+from silverspeak.homoglyphs.hkb.kb import DEFAULT_HKB_PATH
 from silverspeak.homoglyphs.normalize import normalize_text
 from silverspeak.homoglyphs.attacks.random_attack import random_attack
+from silverspeak.homoglyphs.pipeline import normalize_fast
 from silverspeak.homoglyphs.utils import NormalizationStrategies, TypesOfHomoglyphs
 
 
@@ -64,7 +68,7 @@ def parse_args() -> argparse.Namespace:
     # Attack command
     attack_parser = subparsers.add_parser("attack", help="Apply homoglyph attack to text")
     attack_parser.add_argument(
-        "--method", choices=["random", "greedy"], default="random", help="Attack method to use (default: random)"
+        "--method", choices=["random", "greedy", "targeted"], default="random", help="Attack method to use (default: random)"
     )
     attack_parser.add_argument(
         "--percentage", type=float, default=0.05, help="Percentage of characters to replace (default: 0.05)"
@@ -84,10 +88,34 @@ def parse_args() -> argparse.Namespace:
     # Normalize command
     normalize_parser = subparsers.add_parser("normalize", help="Normalize text by replacing homoglyphs")
     normalize_parser.add_argument(
+        "--pipeline",
+        type=str,
+        default="fast",
+        choices=["fast", "legacy"],
+        help="Normalization pipeline: fast (HKB, default) or legacy (strategy-based)",
+    )
+    normalize_parser.add_argument(
         "--strategy",
         type=str,
         default="dominant-script",
-        help="Normalization strategy (dominant-script, dominant-script-block, local-context, tokenization, language-model)",
+        help="Legacy strategy (only with --pipeline legacy)",
+    )
+    normalize_parser.add_argument(
+        "--min-score",
+        type=float,
+        default=0.0,
+        help="Minimum HKB edge score (fast pipeline only)",
+    )
+    normalize_parser.add_argument(
+        "--score-margin",
+        type=float,
+        default=0.0,
+        help="Score gap required to resolve ambiguity (fast pipeline only)",
+    )
+    normalize_parser.add_argument(
+        "--report",
+        action="store_true",
+        help="Write ambiguous spans JSON to stderr (fast pipeline only)",
     )
 
     # Common arguments
@@ -215,12 +243,19 @@ def main() -> None:
                     same_block=args.same_block,
                     types_of_homoglyphs_to_use=homoglyph_types,
                 )
-            else:  # greedy
+            elif args.method == "greedy":
                 result = greedy_attack(
                     input_text,
                     percentage=args.percentage,
                     same_script=args.same_script,
                     same_block=args.same_block,
+                    types_of_homoglyphs_to_use=homoglyph_types,
+                )
+            else:
+                result = targeted_attack(
+                    input_text,
+                    percentage=args.percentage,
+                    random_seed=args.seed,
                     types_of_homoglyphs_to_use=homoglyph_types,
                 )
 
@@ -230,13 +265,29 @@ def main() -> None:
             sys.exit(1)
 
     elif args.command == "normalize":
-        # Parse normalization strategy
-        strategy = parse_normalization_strategy(args.strategy)
-
-        # Apply normalization
         try:
-            result = normalize_text(input_text, strategy=strategy)
-            logger.info(f"Applied normalization with strategy: {args.strategy}")
+            if args.pipeline == "fast":
+                norm_result = normalize_fast(
+                    text=input_text,
+                    graph_path=DEFAULT_HKB_PATH,
+                    min_score=args.min_score,
+                    score_margin=args.score_margin,
+                )
+                result = norm_result.text
+                logger.info(
+                    f"Applied fast pipeline: {len(norm_result.chars_changed)} changes, "
+                    f"{len(norm_result.ambiguous)} ambiguous"
+                )
+                if args.report and norm_result.ambiguous:
+                    report = [
+                        {"pos": a.pos, "char": a.char, "candidates": a.candidates}
+                        for a in norm_result.ambiguous
+                    ]
+                    sys.stderr.write(json.dumps(report, ensure_ascii=False) + "\n")
+            else:
+                strategy = parse_normalization_strategy(args.strategy)
+                result = normalize_text(input_text, strategy=strategy)
+                logger.info(f"Applied legacy normalization with strategy: {args.strategy}")
         except Exception as e:
             logger.error(f"Error applying normalization: {e}")
             sys.exit(1)

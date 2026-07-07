@@ -32,6 +32,10 @@ jobs:
         run: |
           poetry run pytest -k "test_normalize_with_fallback"
 
+      - name: Run benchmark gating tests
+        run: |
+          poetry run pytest test/test_benchmark.py test/test_fast_normalize.py test/test_hkb.py -q
+
       - name: Run random attack and normalize test
         run: |
           poetry run pytest -k "test_random_attack_and_normalize_with_tolerance_and_fallback"

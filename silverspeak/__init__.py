@@ -40,8 +40,12 @@ from silverspeak.homoglyphs.attacks.greedy_attack import greedy_attack
 from silverspeak.homoglyphs.attacks.targeted_attack import targeted_attack
 from silverspeak.homoglyphs.homoglyph_replacer import HomoglyphReplacer
 from silverspeak.homoglyphs.normalize import normalize_text
+from silverspeak.homoglyphs.pipeline import normalize, normalize_fast
+from silverspeak.homoglyphs.normalize_result import NormalizeResult
+from silverspeak.homoglyphs.benchmark import run_benchmark, measure_clean_fpr, measure_round_trip
 from silverspeak.homoglyphs.attacks.random_attack import random_attack
 from silverspeak.homoglyphs.utils import NormalizationStrategies, TypesOfHomoglyphs
+from silverspeak.homoglyphs.hkb import HomoglyphKB, build_hkb
 
 
 def get_version() -> str:
@@ -59,9 +63,17 @@ __all__ = [
     "greedy_attack",
     "targeted_attack",
     "normalize_text",
+    "normalize",
+    "normalize_fast",
+    "NormalizeResult",
+    "run_benchmark",
+    "measure_clean_fpr",
+    "measure_round_trip",
     "HomoglyphReplacer",
     "TypesOfHomoglyphs",
     "NormalizationStrategies",
+    "HomoglyphKB",
+    "build_hkb",
     "get_version",
     "__version__",
 ]

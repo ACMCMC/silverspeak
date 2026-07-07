@@ -26,7 +26,7 @@ from silverspeak.homoglyphs.utils import (
     TypesOfHomoglyphs,
 )
 
-from .unicode_scoring import score_homoglyphs_for_character
+from .unicode_scoring import score_homoglyphs_for_character, score_homoglyphs_for_context_window
 
 from .script_block_category_utils import (
     detect_dominant_block,
@@ -341,11 +341,13 @@ class HomoglyphReplacer:
                 if homoglyph == char:
                     continue  # Skip the character itself
 
-                # Use our scoring function that compares properties directly
-                score = self.score_homoglyph_for_context(
+                score_dict = score_homoglyphs_for_context_window(
                     homoglyph=homoglyph,
-                    char=char
+                    char=char,
+                    context=context,
+                    context_window_size=context_window_size,
                 )
+                score = score_dict.get("total_score", 0.0)
                 
                 property_scores.append((homoglyph, score))
 

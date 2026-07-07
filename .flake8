@@ -23,5 +23,4 @@ exclude =
     .venv,
     venv,
     env,
-    docs/build,
-    docs/source/conf.py
+    site,

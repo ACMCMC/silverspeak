@@ -1,0 +1,65 @@
+site_name: SilverSpeak
+site_url: https://acmcmc.github.io/silverspeak/
+repo_url: https://github.com/ACMCMC/silverspeak
+repo_name: ACMCMC/silverspeak
+
+theme:
+  name: material
+  logo: assets/silverspeak_logo_editable.svg
+  favicon: assets/silverspeak_logo_editable.svg
+  palette:
+    - scheme: default
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - scheme: slate
+      primary: indigo
+      accent: indigo
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - search.suggest
+    - content.code.copy
+
+plugins:
+  - search
+  - mkdocstrings:
+      handlers:
+        python:
+          paths: [.]
+          options:
+            show_source: true
+            show_root_heading: true
+            members_order: source
+
+markdown_extensions:
+  - admonition
+  - pymdownx.highlight
+  - pymdownx.superfences
+  - pymdownx.tabbed:
+      alternate_style: true
+  - attr_list
+  - md_in_html
+
+nav:
+  - Home: index.md
+  - Installation: installation.md
+  - Usage: usage.md
+  - HKB: hkb.md
+  - API Reference: api.md
+  - Challenges: challenges.md
+  - Normalization Strategies:
+      - Overview: normalization_strategies.md
+      - Dominant Script: normalization_strategies/dominant_script.md
+      - Dominant Script and Block: normalization_strategies/dominant_script_and_block.md
+      - Local Context: normalization_strategies/local_context.md
+      - Tokenizer: normalization_strategies/tokenizer.md
+      - Language Model: normalization_strategies/language_model.md
+      - N-gram: normalization_strategies/ngram.md
+      - OCR Confidence: normalization_strategies/ocr_confidence.md
+      - Graph Based: normalization_strategies/graph_based.md
