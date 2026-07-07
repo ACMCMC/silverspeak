@@ -1,0 +1,29 @@
+name: Fix Pages Custom Domain
+
+on:
+  workflow_dispatch:
+
+permissions:
+  pages: write
+
+jobs:
+  clear-domain:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Remove custom domain from GitHub Pages
+        run: |
+          curl -fsS -X PUT \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/pages" \
+            -d '{"build_type":"workflow","cname":null,"https_enforced":true}'
+          echo "Custom domain cleared. Site URL should be https://acmcmc.github.io/silverspeak/"
+
+      - name: Show current Pages config
+        run: |
+          curl -fsS \
+            -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/pages" | python3 -m json.tool
