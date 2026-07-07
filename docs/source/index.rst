@@ -21,6 +21,7 @@ Welcome to SilverSpeak's documentation!
 
    installation
    usage
+   hkb
    api_reference
    challenges
    normalization_strategies
@@ -29,6 +30,9 @@ Welcome to SilverSpeak's documentation!
    normalization_strategies/local_context
    normalization_strategies/tokenizer
    normalization_strategies/language_model
+   normalization_strategies/ngram
+   normalization_strategies/ocr_confidence
+   normalization_strategies/graph_based
 
 Indices and tables
 ==================

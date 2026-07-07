@@ -1,61 +1,37 @@
 Installation
 ============
 
-To install SilverSpeak, follow these steps:
+PyPI
+----
 
-1. Ensure you have Python 3.11 or higher installed on your system.
-2. Install Poetry, a dependency management tool, by running:
+.. code-block:: bash
 
-   .. code-block:: bash
+   pip install silverspeak
 
-      pip install poetry
+Optional extras:
 
-3. Clone the SilverSpeak repository from GitHub:
+.. code-block:: bash
 
-   .. code-block:: bash
+   pip install "silverspeak[spell-check]"
+   pip install "silverspeak[advanced]"
+   pip install "silverspeak[all]"
 
-      git clone https://github.com/ACMCMC/silverspeak.git
-      cd silverspeak
+From source
+-----------
 
-4. Install the project dependencies using Poetry:
+.. code-block:: bash
 
-   .. code-block:: bash
+   git clone https://github.com/ACMCMC/silverspeak.git
+   cd silverspeak
+   pip install poetry
+   poetry install --with dev
 
-      poetry install
+Optional Poetry groups:
 
-SilverSpeak is now ready for use.
+.. code-block:: bash
 
-Installing Optional Dependencies
--------------------------------
+   poetry install --with spell-check
+   poetry install --with advanced
+   poetry install --with ngram-analysis graph-analysis
 
-SilverSpeak provides optional dependencies for enhanced normalization strategies. You can install them based on your needs:
-
-1. **Spell Checking Dependencies**:
-
-   To use the spell checking normalization strategy, install the required dependencies:
-
-   .. code-block:: bash
-
-      poetry install --with spell-check
-
-   This installs packages such as `symspellpy`, `pyspellchecker`, and `python-Levenshtein`.
-
-2. **Advanced Contextual Spell Checking**:
-
-   For advanced contextual spell checking capabilities:
-
-   .. code-block:: bash
-
-      poetry install --with contextual-spell-check
-
-   This installs the `neuspell` package for neural spell checking.
-
-3. **Install All Optional Dependencies**:
-
-   To install all optional dependencies:
-
-   .. code-block:: bash
-
-      poetry install --with spell-check --with contextual-spell-check
-
-The main package does not require these dependencies for basic functionality, but they are needed for specific normalization strategies as detailed in the normalization strategies documentation.
+Requirements: Python 3.11+.

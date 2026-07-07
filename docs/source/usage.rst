@@ -1,123 +1,80 @@
 Usage
 =====
 
-SilverSpeak is a Python library designed to manipulate text using homoglyphs for security and adversarial purposes. Below are examples of its usage, with detailed explanations to help users understand the purpose and functionality of each operation:
+Attacks
+-------
 
-1. **Performing a Greedy Attack**:
+.. code-block:: python
 
-   A greedy attack replaces characters in the input text with visually similar homoglyphs to create an adversarial version of the text. This can be used to test the robustness of text-based systems, such as spam filters or OCR systems, against homoglyph-based attacks.
+   from silverspeak import random_attack, greedy_attack, targeted_attack
 
-   .. code-block:: python
+   text = "Hello world"
+   attacked = random_attack(text=text, percentage=0.1, random_seed=2242)
+   attacked = greedy_attack(text=text, percentage=0.1, random_seed=2242)
+   attacked = targeted_attack(text=text, percentage=0.1, random_seed=2242)
 
-      from silverspeak.homoglyphs import greedy_attack
+CLI:
 
-      # Define the input text to be attacked
-      text = "example text"
+.. code-block:: bash
 
-      # Perform a greedy attack by replacing characters with homoglyphs
-      attacked_text = greedy_attack.perform_attack(text)
+   python -m silverspeak attack --method random --percentage 0.1 --seed 2242
+   python -m silverspeak attack --method targeted --percentage 0.2 --seed 2242
 
-      # Print the adversarially modified text
-      print(attacked_text)
+Normalization
+-------------
 
-   In this example, the `perform_attack` function systematically replaces characters in the input text with homoglyphs from a predefined mapping. The resulting text may look visually similar to the original but is designed to confuse text-processing systems.
+Fast pipeline (default, HKB-based, no torch required):
 
-2. **Normalizing Text**:
+.. code-block:: python
 
-   Text normalization replaces homoglyphs in the input text with their canonical equivalents. This is useful for ensuring consistency in text representation, especially when processing mixed-script text that may contain homoglyphs.
+   from pathlib import Path
+   from silverspeak import normalize_fast
 
-   .. code-block:: python
+   result = normalize_fast(
+       text="hеllо wоrld",
+       graph_path=Path("silverspeak/homoglyphs/hkb_data/graph.json.gz"),
+       min_score=0.0,
+       score_margin=0.0,
+   )
+   print(result.text)
 
-      from silverspeak.homoglyphs import normalize_text
+Legacy strategies (10 heuristics via ``HomoglyphReplacer``):
 
-      # Define the input text containing homoglyphs
-      text = "exаmple"  # Note: homoglyph 'а' (Cyrillic) is used instead of 'a' (Latin)
+.. code-block:: python
 
-      # Normalize the text by replacing homoglyphs with their canonical equivalents
-      normalized_text = normalize_text(text)
+   from silverspeak import normalize_text
+   from silverspeak.homoglyphs.utils import NormalizationStrategies
 
-      # Print the normalized text
-      print(normalized_text)
+   normalized = normalize_text(
+       text="Hеllo wоrld",
+       strategy=NormalizationStrategies.LOCAL_CONTEXT,
+   )
 
-   In this example, the `normalize_text` function identifies homoglyphs in the input text and replaces them with their standard Unicode equivalents. This ensures that the text is represented in a consistent and predictable manner.
+CLI:
 
-3. **Replacing Homoglyphs**:
+.. code-block:: bash
 
-   Homoglyph replacement involves substituting characters in the input text with homoglyphs from a predefined mapping. This can be used to create visually obfuscated text for security or artistic purposes.
+   python -m silverspeak normalize
+   python -m silverspeak normalize --pipeline legacy --strategy local-context
 
-   .. code-block:: python
+Benchmarking
+------------
 
-      from silverspeak.homoglyphs import HomoglyphReplacer
+.. code-block:: python
 
-      # Initialize a HomoglyphReplacer instance
-      replacer = HomoglyphReplacer()
+   from silverspeak import run_benchmark, random_attack, normalize_fast
 
-      # Define the input text to be modified
-      text = "example"
+   report = run_benchmark(
+       clean_samples=["hello", "Привет", "你好世界"],
+       round_trip_samples=["Hello world"],
+       attack_fn=lambda text: random_attack(text=text, percentage=0.1, random_seed=2242),
+       normalize_fn=lambda text: normalize_fast(
+           text=text,
+           graph_path=graph_path,
+           min_score=0.0,
+           score_margin=0.0,
+       ).text,
+   )
+   print(report.clean_fpr, report.round_trips)
 
-      # Replace characters in the text with homoglyphs
-      replaced_text = replacer.replace(text)
-
-      # Print the modified text
-      print(replaced_text)
-
-   In this example, the `HomoglyphReplacer` class provides a flexible interface for replacing characters in the input text with homoglyphs. The specific homoglyphs used for replacement are determined by the replacer's configuration.
-
-4. **Using Advanced Normalization Strategies**:
-
-   SilverSpeak offers multiple normalization strategies to handle homoglyph detection and correction. Here are examples of using the new strategies:
-
-   a. **Spell Check Normalization**:
-
-   .. code-block:: python
-
-      from silverspeak.homoglyphs import normalize_text
-      from silverspeak.homoglyphs.utils import NormalizationStrategies
-
-      # Text with homoglyphs (Cyrillic 'а', 'е', 'р')
-      text = "This is а tеst with homoglурhs."
-
-      # Normalize using spell checking (requires spell-check dependencies)
-      normalized_text = normalize_text(
-          text, 
-          strategy=NormalizationStrategies.SPELL_CHECK,
-          language="en"  # Optional: specify language (default is English)
-      )
-      print(normalized_text)  # "This is a test with homoglyphs."
-
-   b. **Language Model Masking**:
-
-   .. code-block:: python
-
-      from silverspeak.homoglyphs import normalize_text
-      from silverspeak.homoglyphs.utils import NormalizationStrategies
-
-      # Text with homoglyphs
-      text = "Tһis іs а tеst with ѕome һomoglурhs."
-
-      # Normalize using language model masking
-      normalized_text = normalize_text(
-          text,
-          strategy=NormalizationStrategies.LANGUAGE_MODEL
-      )
-      print(normalized_text)
-
-   c. **LLM Prompt-based Normalization**:
-
-   .. code-block:: python
-
-      from silverspeak.homoglyphs import normalize_text
-      from silverspeak.homoglyphs.utils import NormalizationStrategies
-
-      # Text with homoglyphs
-      text = "Tһis іs а tеst with ѕome һomoglурhs."
-
-      # Normalize using LLM prompting (requires transformers with a suitable model)
-      normalized_text = normalize_text(
-          text,
-          strategy=NormalizationStrategies.LLM_PROMPT,
-          model_name="google/gemma-2-1b-it"  # Optional: specify a different model
-      )
-      print(normalized_text)
-
-Refer to the API reference for detailed documentation of each module, including additional parameters and advanced usage scenarios. For more information on normalization strategies, see the Normalization Strategies section.
+See :doc:`hkb` for HKB details and :doc:`normalization_strategies` for legacy strategies.

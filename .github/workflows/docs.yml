@@ -42,12 +42,13 @@ jobs:
           python -m pip install --upgrade pip
           pip install poetry
           poetry install --with dev
+          pip install -e .
 
       - name: Build documentation
         run: |
-          source $(poetry env info --path)/bin/activate
           cd docs
-          make html
+          python -m sphinx -b html source build/html
+          touch build/html/.nojekyll
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
