@@ -24,13 +24,16 @@ jobs:
       - uses: actions/checkout@v4
 
       - name: Clear stale custom domain
+        continue-on-error: true
         run: |
-          curl -fsS -X PUT \
+          STATUS=$(curl -sS -o /tmp/pages_resp.json -w "%{http_code}" -X PUT \
             -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
             -H "Accept: application/vnd.github+json" \
             -H "X-GitHub-Api-Version: 2022-11-28" \
             "https://api.github.com/repos/${GITHUB_REPOSITORY}/pages" \
-            -d '{"build_type":"workflow","cname":null,"https_enforced":true}'
+            -d '{"build_type":"workflow","cname":null}')
+          echo "Pages API HTTP ${STATUS}"
+          cat /tmp/pages_resp.json
 
       - uses: actions/setup-python@v5
         with:
@@ -43,10 +46,7 @@ jobs:
           pip install -e .
           mkdocs build --site-dir site
           touch site/.nojekyll
-          if [ -f site/CNAME ]; then
-            echo "ERROR: site/CNAME must not be deployed"
-            exit 1
-          fi
+          test ! -f site/CNAME
 
       - uses: actions/configure-pages@v5
 
